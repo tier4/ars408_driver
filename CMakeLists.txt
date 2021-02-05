@@ -30,8 +30,8 @@ include_directories(
 )
 
 # Driver Library
-add_library(pe_ars408_driver
-   src/ars408_driver.cpp
+add_library(pe_ars408_parser
+   src/ars408_parser.cpp
    )
 
 # ROS node
@@ -40,11 +40,12 @@ add_executable(pe_ars408_node
    )
 
 target_link_libraries(pe_ars408_node
+   pe_ars408_parser
    ${catkin_LIBRARIES}
    )
 
 
-install(TARGETS pe_ars408_node pe_ars408_driver
+install(TARGETS pe_ars408_node pe_ars408_parser
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})

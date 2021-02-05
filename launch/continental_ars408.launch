@@ -9,6 +9,5 @@
   </node>
 
   <node pkg="pe_ars408_ros" type="pe_ars408_node" name="$(anon pe_ars408_node)" output="screen" ns="$(arg namespace)">
-
   </node>
 </launch>

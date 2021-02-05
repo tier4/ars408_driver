@@ -11,7 +11,7 @@
 #include <ros/ros.h>
 #include <can_msgs/Frame.h>
 
-#include "ars408_ros/ars408_driver.h"
+#include "ars408_ros/ars408_parser.h"
 
 class PeContinentalArs408Node
 {
@@ -20,6 +20,8 @@ class PeContinentalArs408Node
   ros::Subscriber subscriber_can_raw_;
 
   void CanFrameCallback(const can_msgs::Frame::ConstPtr& can_msg);
+
+  ars408::CanParser ars408_parser_;
 
 public:
   PeContinentalArs408Node();

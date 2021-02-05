@@ -1,22 +1,23 @@
 #include "ars408_ros/ars408_ros_node.h"
 
 PeContinentalArs408Node::PeContinentalArs408Node() :
-    global_node_handle_(), private_node_handle_("~")
+    global_node_handle_(), private_node_handle_("~"), ars408_parser_()
 {
 
 }
 
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::Frame::ConstPtr& can_msg)
 {
-
-  std::cout << "[" << ros::this_node::getName() << "] CAN ID: " << std::hex << can_msg->id << " DATA: " ;
-
-  for(size_t i=0 ; i< can_msg->dlc; i++)
+  if (!can_msg->data.empty())
   {
-    std::cout << unsigned(can_msg->data[i]) << " ";
-  }
+//    std::vector<uint8_t> data;
+//    for (uint8_t i=0; i < can_msg->dlc; i++)
+//    {
+//      data.emplace_back(can_msg->data[i]);
+//    }
 
-  std::cout << std::endl;
+    ars408_parser_.Parse(can_msg->id, can_msg->data, can_msg->dlc);
+  }
 }
 
 void PeContinentalArs408Node::Run()
