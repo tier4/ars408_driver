@@ -31,7 +31,7 @@ include_directories(
 
 # Driver Library
 add_library(pe_ars408_parser
-   src/ars408_parser.cpp
+   src/ars408_driver.cpp
    )
 
 # ROS node
