@@ -52,7 +52,7 @@ namespace ars408
      * @param in_new_status object containing the desired configuration
      * @return array containing the can command to be send
      */
-    boost::array<uint8_t, 8> GenerateRadarConfiguration(const ars408::RadarState &in_new_status);
+    boost::array<uint8_t, 8> GenerateRadarConfiguration(const ars408::RadarCfg &in_new_status);
   };
 }
 #endif //PE_ARS408_ROS_ARS408_DRIVER_H

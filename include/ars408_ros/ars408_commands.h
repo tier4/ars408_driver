@@ -47,12 +47,15 @@ namespace ars408
     bool UpdateSortIndex;/*Allow change of sorting index if true*/
     bool UpdateStoreInNVM;/*Allow storing to non-volatile memory if true*/
     bool UpdateInvalidClusters;/*Allows changing the invalid clusters parameter if true*/
-    uint8_t MaxDistance;/*Maximum detection distance*/
+    uint16_t MaxDistance;/*Maximum detection distance*/
     uint8_t SensorID;/*Sensor ID 0 – 7*/
-    enum OutputTypeConfig{NONE, OBJECTS, CLUSTERS};
+    enum OutputTypeConfig{NONE,/*0x0*/
+      OBJECTS, /*0x1*/
+      CLUSTERS /*0x2*/
+    };
     OutputTypeConfig OutputType;/*Configures the data output to clusters (0x2) or objects (0x1)*/
-    enum PowerConfig{STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN}; /*Current configuration of transmitted radar power parameter*/
-    PowerConfig RadarPower;/*Configures the transmitted radar power. The output RCS of cluster and objects will be compensated for this attenuation. Reducing the output power can improve detection in case of close distance scenarios or inside rooms.*/    bool UpdateCtrlRelay;
+    enum RadarPowerConfig{STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN}; /*Current configuration of transmitted radar power parameter*/
+    RadarPowerConfig RadarPower;/*Configures the transmitted radar power. The output RCS of cluster and objects will be compensated for this attenuation. Reducing the output power can improve detection in case of close distance scenarios or inside rooms.*/    bool UpdateCtrlRelay;
     bool CtrlRelay;/*Relay control message (0x8) is sent if true and the collision detection is activated*/
     bool SendQuality;/*Cluster or object quality information (message 0x60C or 0x702) is sent if true*/
     bool SendExtInfo;/*Extended information (message 0x60D) is sent for objects if true (if clusters are selected as output type this value is ignored)*/
