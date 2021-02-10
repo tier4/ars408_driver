@@ -12,7 +12,7 @@
 
 #include "ars408_ros/ars408_constants.h"
 #include "ars408_ros/ars408_commands.h"
-
+#include "ars408_ros/ars408_object.h"
 
 namespace ars408
 {
@@ -21,6 +21,10 @@ namespace ars408
   private:
     bool valid_radar_state_;
     ars408::RadarState current_state_;
+    ars408::Obj_0_Status objects_status_;
+    ars408::Obj_1_General objects_general_;
+    ars408::Obj_2_Quality objects_quality_;
+    ars408::Obj_3_Extended objects_extended_;
 
     /**
     * Parses RadarState CAN 0x201
@@ -28,6 +32,8 @@ namespace ars408
     * @return object filled with the current Radar State
     */
     ars408::RadarState ParseRadarState(const boost::array<uint8_t, 8>& in_can_data);
+
+    ars408::Obj_0_Status ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data);
 
   public:
     /**

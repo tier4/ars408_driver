@@ -153,16 +153,35 @@ namespace ars408
     }
   }
 
+  ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data)
+  {
+    objects_status_.NumberOfObjects = in_can_data[0];
+    objects_status_.MeasurementCounter = (in_can_data[1] << 8) + (in_can_data[0]);
+    objects_status_.InterfaceVersion = (in_can_data[3] >> 4);
+    return  objects_status_;
+  }
   std::string Ars408Driver::Parse(const uint32_t& can_id, const boost::array<uint8_t, 8>& can_data , const uint8_t& data_length)
   {
     switch (can_id)
     {
+      /// 0x201 the current configuration and
+      //sensor state in message
       case ars408::RADAR_STATE:
         if (ars408::RADAR_STATE_BYTES == data_length)
         {
           ars408::RadarState state = ParseRadarState(can_data);
 
           std::cout << state.ToString() << std::endl << std::endl;
+        }
+        break;
+      /// 0x60A contains list header information,
+      //i.e. the number of objects that are sent afterwards
+      case ars408::OBJ_STATUS:
+
+        if (ars408::OBJ_STATUS_BYTES == data_length)
+        {
+          ars408::Obj_0_Status object_status = ParseObject0_Status(can_data);
+          std::cout << object_status.ToString() << std::endl << std::endl;
         }
         break;
     }

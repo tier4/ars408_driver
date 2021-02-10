@@ -82,7 +82,7 @@ namespace ars408
    * Direction: FROM_DEVICE
    * Description: Radar status
    */
-  class RadarState: RadarCommand
+  class RadarState: public RadarCommand
   {
   public:
     RadarState():RadarCommand(ars408::RADAR_STATE)
@@ -439,8 +439,16 @@ namespace ars408
     {
 
     }
+    std::string ToString()
+    {
+      std::ostringstream stream;
+      stream << "NumberOfObjects: " << (unsigned short)NumberOfObjects << std::endl
+      << "MeasurementCounter: " << (unsigned int)MeasurementCounter << std::endl
+      << "InterfaceVersion: " << (unsigned short)InterfaceVersion << std::endl;
+      return stream.str();
+    }
     uint8_t NumberOfObjects;  /*Number of objects (max. 100 Objects)*/
-    uint8_t MeasurementCounter;/*Measurement cycle counter (counting up since startup of sensor and restarting at 0 when > 65535)*/
+    uint16_t MeasurementCounter;/*Measurement cycle counter (counting up since startup of sensor and restarting at 0 when > 65535)*/
     uint8_t InterfaceVersion; /*Object list CAN interface version*/
   };
 
