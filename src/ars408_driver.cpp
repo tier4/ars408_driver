@@ -155,11 +155,34 @@ namespace ars408
 
   ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data)
   {
-    objects_status_.NumberOfObjects = in_can_data[0];
-    objects_status_.MeasurementCounter = (in_can_data[1] << 8) + (in_can_data[0]);
-    objects_status_.InterfaceVersion = (in_can_data[3] >> 4);
-    return  objects_status_;
+    current_objects_status_.NumberOfObjects = in_can_data[0];
+    current_objects_status_.MeasurementCounter = (in_can_data[1] << 8u) + (in_can_data[0]);
+    current_objects_status_.InterfaceVersion = (in_can_data[3] & 0xF0) >> 4u;
+    return  current_objects_status_;
   }
+
+  ars408::RadarObject Ars408Driver::ParseObject1_General(const boost::array<uint8_t, 8>& in_can_data)
+  {
+    ars408::RadarObject current_object;
+    current_object.sequence = current_objects_status_.MeasurementCounter;
+    current_object.id = in_can_data[0];
+    current_object.dynamic_property = ars408::Obj_1_General::DynamicProperty(in_can_data[6] & 0x07u);
+    current_object.rcs = (in_can_data[7] * 0.5) - 64.0;
+
+    uint16_t  dist_x_tmp = (in_can_data[1] << 5u) + ((in_can_data[2] & 0xF8u) >> 3u);
+    current_object.distance_long_x = dist_x_tmp * 0.2f - 500.0f;
+
+    uint16_t dist_y_tmp = ((in_can_data[2] & 0x07u) << 8u) + (in_can_data[3]);
+    current_object.distance_lat_y = dist_y_tmp *0.2f - 204.6f;
+
+    uint16_t speed_x_tmp = (in_can_data[4] << 2u) + ((in_can_data[5] & 0xC0u) >> 6u);
+    current_object.speed_long_x = (speed_x_tmp * 0.25f) - 128.0f;
+
+    uint16_t speed_y_ymp = ( (in_can_data[5] & 0x3Fu) << 3u) + ( (in_can_data[6] & 0xE0u) >> 5u);
+    current_object.speed_lat_y = ( speed_y_ymp * 0.25f - 64.0f);
+    return current_object;
+  }
+
   std::string Ars408Driver::Parse(const uint32_t& can_id, const boost::array<uint8_t, 8>& can_data , const uint8_t& data_length)
   {
     switch (can_id)
@@ -171,17 +194,25 @@ namespace ars408
         {
           ars408::RadarState state = ParseRadarState(can_data);
 
-          std::cout << state.ToString() << std::endl << std::endl;
+          std::cout << state.ToString() << std::endl;
         }
         break;
       /// 0x60A contains list header information,
       //i.e. the number of objects that are sent afterwards
       case ars408::OBJ_STATUS:
-
         if (ars408::OBJ_STATUS_BYTES == data_length)
         {
           ars408::Obj_0_Status object_status = ParseObject0_Status(can_data);
-          std::cout << object_status.ToString() << std::endl << std::endl;
+          std::cout << object_status.ToString() << std::endl;
+        }
+        break;
+      /// 0x60B contains the position and velocity of
+      //the objects and is sent repeatedly for all the tracked objects.
+      case ars408::OBJ_GENERAL:
+        if (ars408::OBJ_GENERAL_BYTES == data_length)
+        {
+          ars408::RadarObject object = ParseObject1_General(can_data);
+          std::cout << object.ToString() << std::endl;
         }
         break;
     }

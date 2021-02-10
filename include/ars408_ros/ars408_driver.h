@@ -21,10 +21,12 @@ namespace ars408
   private:
     bool valid_radar_state_;
     ars408::RadarState current_state_;
-    ars408::Obj_0_Status objects_status_;
+    ars408::Obj_0_Status current_objects_status_;
     ars408::Obj_1_General objects_general_;
     ars408::Obj_2_Quality objects_quality_;
     ars408::Obj_3_Extended objects_extended_;
+
+    std::vector<ars408::RadarObject> objects_;
 
     /**
     * Parses RadarState CAN 0x201
@@ -33,7 +35,19 @@ namespace ars408
     */
     ars408::RadarState ParseRadarState(const boost::array<uint8_t, 8>& in_can_data);
 
+    /**
+    * Parses Object0_Status CAN 0x60A
+    * @param in_can_data boost::array<uint8_t, 8>
+    * @return object filled with the current number of objects
+    */
     ars408::Obj_0_Status ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data);
+
+    /**
+    * Parses Object1_General CAN 0x60B
+    * @param in_can_data boost::array<uint8_t, 8>
+    * @return object filled with the details about one object
+    */
+    ars408::RadarObject ParseObject1_General(const boost::array<uint8_t, 8>& in_can_data);
 
   public:
     /**

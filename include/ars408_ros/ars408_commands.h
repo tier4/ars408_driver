@@ -442,9 +442,9 @@ namespace ars408
     std::string ToString()
     {
       std::ostringstream stream;
-      stream << "NumberOfObjects: " << (unsigned short)NumberOfObjects << std::endl
-      << "MeasurementCounter: " << (unsigned int)MeasurementCounter << std::endl
-      << "InterfaceVersion: " << (unsigned short)InterfaceVersion << std::endl;
+      stream << "NumberOfObjects: " << (unsigned short)NumberOfObjects
+      << ", MeasurementCounter: " << (unsigned int)MeasurementCounter
+      << ", InterfaceVersion: " << (unsigned short)InterfaceVersion << std::endl;
       return stream.str();
     }
     uint8_t NumberOfObjects;  /*Number of objects (max. 100 Objects)*/
