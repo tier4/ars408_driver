@@ -59,7 +59,7 @@ namespace ars408
   const uint8_t  OBJ_QUALITY_BYTES = 7;
 
   const uint32_t OBJ_EXTENDED = 0x60D;
-  const uint8_t  ROBJ_EXTENDED_BYTES = 8;
+  const uint8_t  OBJ_EXTENDED_BYTES = 8;
 
   const uint32_t OBJ_WARNING = 0x60E;
   const uint8_t  OBJ_WARNING_BYTES = 4;

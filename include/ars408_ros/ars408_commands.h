@@ -487,6 +487,14 @@ namespace ars408
   class Obj_2_Quality: RadarCommand
   {
   public:
+    uint8_t Id;
+    float LongitudinalDistanceXRms;
+    float RelativeLongitudinalVelocityXRms;
+    float LateralDistanceYRms;
+    float RelativeLateralVelocityYRms;
+    float RelativeLongitudinalAccelerationXRms;
+    float RelativeLateralAccelerationYRms;
+    float ExistenceProbability;/*Probability of existence*/
     Obj_2_Quality():RadarCommand(ars408::OBJ_QUALITY)
     {
 
@@ -510,7 +518,9 @@ namespace ars408
     uint8_t Id;                         /*0       255       1         Object ID (since objects are tracked, the ID is kept throughout measurement cycles and does not have to be consecutive)*/
     float RelativeLongitudinalAccelerationX;/*-10.00 10.47 0.01 m/s2  Relative acceleration in longitudinal direction*/
     float RelativeLateralAccelerationY;/*-2.50 2.61 0.01 m/s2   Relative acceleration in lateral direction*/
-    enum ObjectClass{POINT, CAR, TRUCK, RESERVED_01, MOTORCYCLE, BICYCLE, WIDE, RESERVED_02};
+    enum ObjectClassProperty{POINT, CAR, TRUCK, RESERVED_01, MOTORCYCLE, BICYCLE, WIDE, RESERVED_02};
+    ObjectClassProperty ObjectClass;/*Class of the object*/
+    float OrientationAngle;/*-180  180 0.4 degOrientation angle of the object in degrees */
     float Length;/*0.0 51.0 0.2 m Length of the tracked object*/
     float Width;/*0.0 51.0 0.2 m  Length of the tracked object*/
   };

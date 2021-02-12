@@ -11,7 +11,7 @@ namespace ars408
   public:
     std::string ToString(){
       std::ostringstream stream;
-      stream << "Sequence: " << sequence << ", ID: " << (unsigned int)id << ", X: " << distance_long_x
+      stream << "Sequence: " << sequence_id << ", ID: " << (unsigned int)id << ", X: " << distance_long_x
       << ", Y: " << distance_lat_y << ", SpeedX: " << speed_long_x << ", SpeedY: " << speed_lat_y
       << ", rcs: " << rcs  << ", Status: ";
       switch(dynamic_property)
@@ -41,7 +41,7 @@ namespace ars408
       stream << std::endl;
       return stream.str();
     }
-    uint16_t sequence;
+    uint16_t sequence_id;
     uint8_t id;
     float distance_long_x;
     float distance_lat_y;
@@ -50,11 +50,12 @@ namespace ars408
     ars408::Obj_1_General::DynamicProperty dynamic_property;
     float rcs;
     float rel_acceleration_long_x;/*Relative acceleration in longitudinal direction in m/s^2 */
-    ars408::Obj_3_Extended::ObjectClass object_class;
+    ars408::Obj_3_Extended::ObjectClassProperty object_class;
     float rel_acceleration_lat_y;/*Relative acceleration in lateral direction in m/s^2*/
     float orientation_angle;/*Orientation angle of the object in degrees*/
     float length;/*Length of the tracked object*/
     float width;/*Width of the tracked object*/
+    float probability_existence;
   };
 }
 #endif //PE_ARS408_ROS_ARS408_OBJECT_H

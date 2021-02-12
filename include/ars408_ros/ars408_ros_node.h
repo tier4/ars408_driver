@@ -21,10 +21,11 @@ class PeContinentalArs408Node
 
   void CanFrameCallback(const can_msgs::Frame::ConstPtr& can_msg);
 
-  ars408::Ars408Driver ars408_parser_;
+  ars408::Ars408Driver ars408_driver_;
 
 public:
   PeContinentalArs408Node();
+  void RadarDetectedObjectsCallback(const std::unordered_map<uint8_t , ars408::RadarObject>& detected_objects);
   void Run();
 };
 
