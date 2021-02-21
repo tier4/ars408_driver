@@ -8,8 +8,11 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>roscpp</depend>
+
+  <depend>autoware_perception_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>can_msgs</depend>
   <depend>socketcan_bridge</depend>
+  <depend>unique_id</depend>
 
 </package>
