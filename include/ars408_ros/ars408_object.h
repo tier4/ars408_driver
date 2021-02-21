@@ -9,35 +9,75 @@ namespace ars408
   class RadarObject
   {
   public:
-    std::string ToString(){
-      std::ostringstream stream;
-      stream << "Sequence: " << sequence_id << ", ID: " << (unsigned int)id << ", X: " << distance_long_x
-      << ", Y: " << distance_lat_y << ", SpeedX: " << speed_long_x << ", SpeedY: " << speed_lat_y
-      << ", rcs: " << rcs  << ", Status: ";
+    std::string ObjectClassToString()
+    {
+      switch(object_class)
+      {
+        case ars408::Obj_3_Extended::ObjectClassProperty::WIDE:
+          return "WIDE ";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::MOTORCYCLE:
+          return "MOTORCYCLE ";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::BICYCLE:
+          return "BICYCLE ";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::RESERVED_01:
+          return "RESERVED_01";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::POINT:
+          return "POINT";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::CAR:
+          return "CAR ";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::RESERVED_02:
+          return "RESERVED_02";
+          break;
+        case ars408::Obj_3_Extended::ObjectClassProperty::TRUCK:
+          return "TRUCK";
+          break;
+        default:
+          return "UNDEFINED";
+          break;
+      }
+    }
+    std::string DynamicPropertyToString()
+    {
       switch(dynamic_property)
       {
         case ars408::Obj_1_General::DynamicProperty::MOVING:
-          stream << "MOVING ";
+          return "MOVING";
           break;
         case ars408::Obj_1_General::DynamicProperty::STATIONARY:
-          stream << "STATIONARY ";
+          return "STATIONARY";
           break;
         case ars408::Obj_1_General::DynamicProperty::ONCOMING:
-          stream << "ONCOMING ";
+          return "ONCOMING";
           break;
         case ars408::Obj_1_General::DynamicProperty::CROSSING_LEFT:
-          stream << "CROSSING_LEFT ";
+          return "CROSSING_LEFT";
           break;
         case ars408::Obj_1_General::DynamicProperty::CROSSING_RIGHT:
-          stream << "CROSSING_RIGHT ";
+          return "CROSSING_RIGHT";
           break;
         case ars408::Obj_1_General::DynamicProperty::UNKNOWN:
-          stream << "UNKNOWN ";
+          return "UNKNOWN";
           break;
         case ars408::Obj_1_General::DynamicProperty::STOPPED:
-          stream << "STOPPED ";
+          return "STOPPED";
+          break;
+        default:
+          return "UNDEFINED";
           break;
       }
+    }
+    std::string ToString(){
+      std::ostringstream stream;
+      stream << "Sequence: " << sequence_id << ", ID: " << (unsigned int)id << ", X: " << distance_long_x
+             << ", Y: " << distance_lat_y << ", SpeedX: " << speed_long_x << ", SpeedY: " << speed_lat_y
+             << ", rcs: " << rcs  << ", Status: ";
+      stream << ObjectClassToString();
       stream << std::endl;
       return stream.str();
     }
