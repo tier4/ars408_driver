@@ -9,5 +9,6 @@ test_build:
     - apt-get install -y python-catkin-tools
     - rosdep update
     - mkdir -p src_tmp/$CI_PROJECT_NAME && mv `find -maxdepth 1 -not -name . -not -name src_tmp` src_tmp/$CI_PROJECT_NAME && mv src_tmp src
+    - git clone https://gitlab.com/perceptionengine/autoware/autoware_iv_msgs.git src
     - rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
     - catkin --force-color build
