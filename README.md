@@ -1,38 +1,36 @@
-# Perception Engine's ARS408 Driver
+# Perception Engine's Continental ARS408 Driver
+
+## How to compile
+
+```
+$ git clone https://gitlab.com/perceptionengine/pe-drivers/ars408_ros.git pe_ars408_ws/src && cd pe_ars408_ws
+$ rosdep install --from-paths src --ignore-src -r -y
+$ catkin build
+```
 
 ## How to run
 1. Enable can port
-
 `sudo ip link set can0 up type can bitrate 500000`
 
 2. Launch the driver
-
 `roslaunch pe_ars408_ros continental_ars408.launch`
+   
+### Parameters
 
-Defaults to can0
+|Parameter|Description|Default|
+|---|---|---|
+|`can_device`|Device name of the can interface|`can0`|
+|`can_topic`|Topic on which socketcan will publish the can raw msg|`can_raw`|
 
-3. Example output:
+# Driver
 
-```
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60b DATA: 0 50 14 11 80 20 1 79 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60c DATA: 5 84 63 3a 2 20 e8 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60c DATA: 2 b6 27 8d 82 20 64 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60d DATA: 5 7d 8f a1 70 80 19 c 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60d DATA: 3 7d 4f a1 70 80 d c 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60d DATA: 2 7d f a0 70 80 e 7 
-[/pe_ars408_node_ne0x8k_177881_8280997784855069204] CAN ID: 60a DATA: 6 ad 67 10 
-```
-#Driver
+The launch file will initiate two nodes:
+1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
+1. Continental ARS408 driver will read the `can_raw`, parse and publish the detected objects using the Autoware.IV
+   `autoware_perception_msgs/DynamicObjectArray` in the topic `/detection/radar/objects`.
 
+# Visualization
 
-1. Node
-1. Driver
+To visualize the objects the Autoware's `dynamic_object_visualizer` needs to be launched and subscribe to `/detection/radar/objects`.
 
-## node
-
-ROS topic subscription, publication
-
-## Driver
-CAN parsing, conversion
-
-Radar configuration
+i.e.`roslaunch dynamic_object_visualization dynamic_object_visualizer.launch with_feature:=False input:=/detection/radar/objects`
