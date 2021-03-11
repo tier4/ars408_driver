@@ -70,6 +70,7 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::Radar
   out_object.state.acceleration_covariance.accel.angular.x = in_object.rel_acceleration_long_x;
   out_object.state.acceleration_covariance.accel.angular.y = in_object.rel_acceleration_lat_y;
 
+  return out_object;
 }
 
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_map<uint8_t ,
@@ -84,7 +85,7 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_
 
   for(auto object: detected_objects)
   {
-    ROS_INFO_STREAM(object.second.ToString());
+    //ROS_INFO_STREAM(object.second.ToString());
     autoware_perception_msgs::DynamicObject aw_object = ConvertRadarObjectToAwDynamicObject(object.second);
     aw_output_objects.objects.emplace_back(aw_object);
   }
