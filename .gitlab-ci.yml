@@ -3,12 +3,11 @@ stages:
 
 test_build:
   stage: build
-  image: ros:melodic-perception
+  image: ros:foxy
   script:
     - apt-get update
-    - apt-get install -y python-catkin-tools
     - rosdep update
     - mkdir -p src_tmp/$CI_PROJECT_NAME && mv `find -maxdepth 1 -not -name . -not -name src_tmp` src_tmp/$CI_PROJECT_NAME && mv src_tmp src
-    - git clone https://gitlab.com/perceptionengine/autoware/autoware_iv_msgs.git src/autoware_iv_msgs
+    - git clone --branch ros2 https://gitlab.com/perceptionengine/autoware/autoware_iv_msgs.git src/autoware_iv_msgs
     - rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
-    - catkin --force-color build
+    - colcon build
