@@ -3,13 +3,13 @@
  */
 #include "ars408_ros/ars408_ros_node.h"
 
-PeContinentalArs408Node::PeContinentalArs408Node() :
-    global_node_handle_(), private_node_handle_("~"), ars408_driver_(), sequence_id_(0)
+PeContinentalArs408Node::PeContinentalArs408Node() : Node("ars408_node"),
+    ars408_driver_()
 {
 
 }
 
-void PeContinentalArs408Node::CanFrameCallback(const can_msgs::Frame::ConstPtr& can_msg)
+void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
 {
   if (!can_msg->data.empty())
   {
@@ -23,35 +23,35 @@ PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(const ars408::Obj_3_
   switch (in_radar_class)
   {
     case ars408::Obj_3_Extended::BICYCLE:
-      return autoware_perception_msgs::Semantic::BICYCLE;
+      return autoware_perception_msgs::msg::Semantic::BICYCLE;
       break;
     case ars408::Obj_3_Extended::CAR:
-      return autoware_perception_msgs::Semantic::CAR;
+      return autoware_perception_msgs::msg::Semantic::CAR;
       break;
     case ars408::Obj_3_Extended::TRUCK:
-      return autoware_perception_msgs::Semantic::TRUCK;
+      return autoware_perception_msgs::msg::Semantic::TRUCK;
       break;
     case ars408::Obj_3_Extended::MOTORCYCLE:
-      return autoware_perception_msgs::Semantic::MOTORBIKE;
+      return autoware_perception_msgs::msg::Semantic::MOTORBIKE;
       break;
     case ars408::Obj_3_Extended::POINT:
     case ars408::Obj_3_Extended::RESERVED_01:
     case ars408::Obj_3_Extended::WIDE:
     case ars408::Obj_3_Extended::RESERVED_02:
     default:
-      return autoware_perception_msgs::Semantic::UNKNOWN;
+      return autoware_perception_msgs::msg::Semantic::UNKNOWN;
       break;
   }
 }
 
-autoware_perception_msgs::DynamicObject
+autoware_perception_msgs::msg::DynamicObject
 PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::RadarObject& in_object)
 {
-  autoware_perception_msgs::DynamicObject out_object;
+  autoware_perception_msgs::msg::DynamicObject out_object;
 
-  out_object.id = unique_id::toMsg(unique_id::fromRandom());
+//  out_object.id = unique_identifier_msgs::toMsg(unique_identifier_msgs::fromRandom());
   out_object.semantic.type = ConvertRadarClassToAwSemanticClass(in_object.object_class);
-  out_object.shape.type = autoware_perception_msgs::Shape::BOUNDING_BOX;
+  out_object.shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
   out_object.shape.dimensions.x = 1.0;
   out_object.shape.dimensions.y = 1.0;
   out_object.shape.dimensions.z = 2.0;
@@ -76,59 +76,51 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::Radar
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_map<uint8_t ,
                                                            ars408::RadarObject>& detected_objects)
 {
-  autoware_perception_msgs::DynamicObjectArray aw_output_objects;
+  autoware_perception_msgs::msg::DynamicObjectArray aw_output_objects;
 
   aw_output_objects.header.frame_id = output_frame_;
-  ros::Time current_time = ros::Time::now();
+  rclcpp::Time current_time = this->get_clock()->now();
   aw_output_objects.header.stamp = current_time;
-  aw_output_objects.header.seq = sequence_id_++;
 
   for(auto object: detected_objects)
   {
-    //ROS_INFO_STREAM(object.second.ToString());
-    autoware_perception_msgs::DynamicObject aw_object = ConvertRadarObjectToAwDynamicObject(object.second);
+    // RCLCPP_INFO_STREAM(this->get_logger(), object.second.ToString());
+    autoware_perception_msgs::msg::DynamicObject aw_object = ConvertRadarObjectToAwDynamicObject(object.second);
     aw_output_objects.objects.emplace_back(aw_object);
   }
-  publisher_dynamic_object_array_.publish(aw_output_objects);
+  publisher_dynamic_object_array_->publish(aw_output_objects);
 }
 
 void PeContinentalArs408Node::Run()
 {
   std::string can_input_topic, object_output_topic;
 
-  private_node_handle_.param<std::string>("can_input_topic",
-                                          can_input_topic,
-                                          "can_raw");
-  private_node_handle_.param<std::string>("object_output_topic",
-                                          object_output_topic,
-                                          "/detection/radar/objects");
-  private_node_handle_.param<std::string>("output_frame",
-                                          output_frame_,
-                                          "ars408");
+  can_input_topic = this->declare_parameter<std::string>("can_input_topic", "can_raw");
+  object_output_topic = this->declare_parameter<std::string>("object_output_topic", "/detection/radar/objects");
+  output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
 
   ars408_driver_.RegisterDetectedObjectsCallback(
-    boost::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback,
+    std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback,
                 this,
-                _1));
+                 std::placeholders::_1));
 
-  subscriber_can_raw_ = global_node_handle_.subscribe(can_input_topic,
-                                                      10,
-                                                      &PeContinentalArs408Node::CanFrameCallback,
-                                                      this);
-  ROS_INFO_STREAM("Subscribed to " << can_input_topic);
+  subscription_ = this->create_subscription<can_msgs::msg::Frame>(can_input_topic, 10,
+                                                                  std::bind(&PeContinentalArs408Node::CanFrameCallback,
+                                                                            this, std::placeholders::_1));
+
+  RCLCPP_INFO_STREAM(this->get_logger(), "Subscribed to " << can_input_topic);
 
   publisher_dynamic_object_array_ =
-    global_node_handle_.advertise<autoware_perception_msgs::DynamicObjectArray>(object_output_topic,
-                                                                                10,
-                                                                                true);
+    this->create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(object_output_topic,
+                                                                                10);
 
-  ros::spin();
+    rclcpp::spin(std::make_shared<PeContinentalArs408Node>());
 }
 
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "pe_ars408_ros_node");
+  rclcpp::init(argc, argv);
 
   PeContinentalArs408Node app;
 

@@ -1,18 +1,20 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>pe_ars408_ros</name>
   <version>1.0.0</version>
   <description>Continental ARS408-21 Driver</description>
   <maintainer email="abraham.monrroy@tier4.jp">Abraham Monrroy</maintainer>
   <license>Private</license>
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>roscpp</depend>
-
+  <depend>rclcpp</depend>
   <depend>autoware_perception_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>can_msgs</depend>
-  <depend>socketcan_bridge</depend>
-  <depend>unique_id</depend>
+<!--  <depend>socketcan_bridge</depend>-->
+  <depend>unique-identifier-msgs</depend>
 
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

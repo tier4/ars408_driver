@@ -106,12 +106,12 @@ namespace ars408
   }
 
   void Ars408Driver::RegisterDetectedObjectsCallback(
-    boost::function<void(const std::unordered_map<uint8_t , ars408::RadarObject> &)> objects_callback)
+    std::function<void(const std::unordered_map<uint8_t , ars408::RadarObject> &)> objects_callback)
   {
     detected_objects_callback_ = objects_callback;
   }
 
-  void Ars408Driver::ParseRadarState(const boost::array<uint8_t, 8>& in_can_data)
+  void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8>& in_can_data)
   {
     current_radar_state_.NvmWriteStatus = ((in_can_data[0] & 0x80u) >> 7u);
     current_radar_state_.NvmReadStatus = ((in_can_data[0] & 0x40u) >> 6u);
@@ -137,9 +137,9 @@ namespace ars408
     valid_radar_state_ = true;
   }
 
-  boost::array<uint8_t, 8> Ars408Driver::GenerateRadarConfiguration(const ars408::RadarCfg &in_new_status)
+  std::array<uint8_t, 8> Ars408Driver::GenerateRadarConfiguration(const ars408::RadarCfg &in_new_status)
   {
-    boost::array<uint8_t, 8> can_data = {0,0,0,0,
+    std::array<uint8_t, 8> can_data = {0,0,0,0,
                                          0,0,0,0};
 
     if(in_new_status.UpdateStoreInNVM)
@@ -252,7 +252,7 @@ namespace ars408
     return can_data;
   }
 
-  ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data)
+  ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const std::array<uint8_t, 8>& in_can_data)
   {
     current_objects_status_.NumberOfObjects = in_can_data[0] & 0xFFu;
     current_objects_status_.MeasurementCounter = (in_can_data[1] << 8u) + (in_can_data[0]);
@@ -260,7 +260,7 @@ namespace ars408
     return  current_objects_status_;
   }
 
-  ars408::RadarObject Ars408Driver::ParseObject1_General(const boost::array<uint8_t, 8>& in_can_data)
+  ars408::RadarObject Ars408Driver::ParseObject1_General(const std::array<uint8_t, 8>& in_can_data)
   {
     ars408::RadarObject current_object;
     current_object.sequence_id = current_objects_status_.MeasurementCounter;
@@ -282,7 +282,7 @@ namespace ars408
     return current_object;
   }
 
-  ars408::Obj_2_Quality Ars408Driver::ParseObject2_Quality(const boost::array<uint8_t, 8>& in_can_data)
+  ars408::Obj_2_Quality Ars408Driver::ParseObject2_Quality(const std::array<uint8_t, 8>& in_can_data)
   {
     ars408::Obj_2_Quality obj_quality;
     obj_quality.Id =  in_can_data[0];
@@ -318,7 +318,7 @@ namespace ars408
 
   }
 
-  ars408::Obj_3_Extended Ars408Driver::ParseObject3_Extended(const boost::array<uint8_t, 8>& in_can_data)
+  ars408::Obj_3_Extended Ars408Driver::ParseObject3_Extended(const std::array<uint8_t, 8>& in_can_data)
   {
     ars408::Obj_3_Extended obj_extended;
     obj_extended.Id =  in_can_data[0];
@@ -365,7 +365,7 @@ namespace ars408
 
   }
 
-  std::string Ars408Driver::Parse(const uint32_t& can_id, const boost::array<uint8_t, 8>& in_can_data , const uint8_t& in_data_length)
+  std::string Ars408Driver::Parse(const uint32_t& can_id, const std::array<uint8_t, 8>& in_can_data , const uint8_t& in_data_length)
   {
     switch (can_id)
     {

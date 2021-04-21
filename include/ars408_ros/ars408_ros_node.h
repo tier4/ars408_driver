@@ -8,28 +8,25 @@
 #include <string>
 #include <vector>
 
-#include <ros/ros.h>
-#include <can_msgs/Frame.h>
-#include <unique_id/unique_id.h>
+#include <rclcpp/rclcpp.hpp>
+#include <can_msgs/msg/frame.hpp>
+#include <unique_identifier_msgs/msg/uuid.h>
 
 #include "ars408_ros/ars408_driver.h"
-#include "autoware_perception_msgs/DynamicObjectArray.h"
+#include "autoware_perception_msgs/msg/dynamic_object_array.hpp"
 
-class PeContinentalArs408Node
-{
-  ros::NodeHandle global_node_handle_,
-                private_node_handle_;
-  ros::Subscriber subscriber_can_raw_;
-  ros::Publisher publisher_dynamic_object_array_;
+class PeContinentalArs408Node : public rclcpp::Node {
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr subscriber_can_raw_;
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr subscription_;
+  rclcpp::Publisher<autoware_perception_msgs::msg::DynamicObjectArray>::SharedPtr publisher_dynamic_object_array_;
 
   std::string output_frame_;
-  uint32_t sequence_id_;
 
   ars408::Ars408Driver ars408_driver_;
 
-  void CanFrameCallback(const can_msgs::Frame::ConstPtr& can_msg);
+  void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
 
-  static autoware_perception_msgs::DynamicObject
+  static autoware_perception_msgs::msg::DynamicObject
   ConvertRadarObjectToAwDynamicObject(const ars408::RadarObject& in_object);
 
   static uint32_t
@@ -37,7 +34,7 @@ class PeContinentalArs408Node
 
 public:
   PeContinentalArs408Node();
-  void RadarDetectedObjectsCallback(const std::unordered_map<uint8_t , ars408::RadarObject>& detected_objects);
+  void RadarDetectedObjectsCallback(const std::unordered_map<uint8_t, ars408::RadarObject>& detected_objects);
   void Run();
 };
 

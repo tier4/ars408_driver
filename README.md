@@ -1,12 +1,16 @@
 # Perception Engine's Continental ARS408 Driver
+This is an experimental ROS2 build of this driver!
 
 ## How to compile
-
+You will need to install ```autoware_perception_msgs``` manually.
 ```
-$ git clone https://gitlab.com/perceptionengine/pe-drivers/ars408_ros.git pe_ars408_ws/src && cd pe_ars408_ws
+$ git clone --branch ros2 https://gitlab.com/perceptionengine/pe-drivers/ars408_ros.git pe_ars408_ws/src && cd pe_ars408_ws
 $ rosdep install --from-paths src --ignore-src -r -y
-$ catkin build
+$ colcon build
 ```
+## To do
+1. Port socketcan bridge to ROS2
+1. Port unique_id to ROS2 - only unique_identifier_msgs are supported now but related functionality is not.
 
 ## How to run
 1. Enable can port

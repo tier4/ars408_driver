@@ -71,37 +71,37 @@ namespace ars408
 
     /**
     * Parses RadarState CAN 0x201 and stores internally current status (current_state_)
-    * @param in_can_data boost::array<uint8_t, 8> containing the CAN message
+    * @param in_can_data std::array<uint8_t, 8> containing the CAN message
     */
-    void ParseRadarState(const boost::array<uint8_t, 8>& in_can_data);
+    void ParseRadarState(const std::array<uint8_t, 8>& in_can_data);
 
     /**
     * Parses Object0_Status CAN 0x60A
-    * @param in_can_data boost::array<uint8_t, 8>
+    * @param in_can_data std::array<uint8_t, 8>
     * @return object filled with the current number of objects
     */
-    ars408::Obj_0_Status ParseObject0_Status(const boost::array<uint8_t, 8>& in_can_data);
+    ars408::Obj_0_Status ParseObject0_Status(const std::array<uint8_t, 8>& in_can_data);
 
     /**
     * Parses Object1_General CAN 0x60B
-    * @param in_can_data boost::array<uint8_t, 8> containing the CAN message
+    * @param in_can_data std::array<uint8_t, 8> containing the CAN message
     * @return object filled with the details about one object
     */
-    ars408::RadarObject ParseObject1_General(const boost::array<uint8_t, 8>& in_can_data);
+    ars408::RadarObject ParseObject1_General(const std::array<uint8_t, 8>& in_can_data);
 
     /**
      * Parses Object2_Quality CAN 0x60C
-     * @param in_can_data boost::array<uint8_t, 8> containing the CAN message
+     * @param in_can_data std::array<uint8_t, 8> containing the CAN message
      * @return quality object
      */
-    ars408::Obj_2_Quality ParseObject2_Quality(const boost::array<uint8_t, 8>& in_can_data);
+    ars408::Obj_2_Quality ParseObject2_Quality(const std::array<uint8_t, 8>& in_can_data);
 
     /**
      * Parses Object3_Extended CAN 0x60D
-     * @param in_can_data boost::array<uint8_t, 8> containing the CAN message
+     * @param in_can_data std::array<uint8_t, 8> containing the CAN message
      * @return extended info object
      */
-    ars408::Obj_3_Extended ParseObject3_Extended(const boost::array<uint8_t, 8>& in_can_data);
+    ars408::Obj_3_Extended ParseObject3_Extended(const std::array<uint8_t, 8>& in_can_data);
 
   public:
     /**
@@ -111,7 +111,7 @@ namespace ars408
      * @param in_data_length Number of bytes with valid data contained in can_data
      * @return String Message
      */
-    std::string Parse(const uint32_t& can_id, const boost::array<uint8_t, 8>& in_can_data , const uint8_t& in_data_length);
+    std::string Parse(const uint32_t& can_id, const std::array<uint8_t, 8>& in_can_data , const uint8_t& in_data_length);
 
     /**
      * Returns true if the RadarState has been received, if true it fills current_state with the valid state.
@@ -126,14 +126,14 @@ namespace ars408
      * @param in_new_status object containing the desired configuration
      * @return array containing the can command to be send
      */
-    boost::array<uint8_t, 8> GenerateRadarConfiguration(const ars408::RadarCfg &in_new_status);
+    std::array<uint8_t, 8> GenerateRadarConfiguration(const ars408::RadarCfg &in_new_status);
 
     /**
      * Register the function to be called once all the Radar objects are ready.
      * @param objects_callback pointer to callback function
      */
     void RegisterDetectedObjectsCallback(
-      boost::function<void(const std::unordered_map<uint8_t , ars408::RadarObject> &)> objects_callback);
+      std::function<void(const std::unordered_map<uint8_t , ars408::RadarObject> &)> objects_callback);
   };
 }
 #endif //PE_ARS408_ROS_ARS408_DRIVER_H
