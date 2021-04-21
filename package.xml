@@ -12,7 +12,7 @@
   <depend>sensor_msgs</depend>
   <depend>can_msgs</depend>
 <!--  <depend>socketcan_bridge</depend>-->
-  <depend>unique-identifier-msgs</depend>
+  <depend>unique_identifier_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
