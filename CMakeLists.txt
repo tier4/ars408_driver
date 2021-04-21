@@ -28,7 +28,7 @@ add_library(pe_ars408_parser
 )
 
 target_include_directories(pe_ars408_parser PRIVATE
-   ${Boost_DIRECTORIES}
+   ${Boost_INCLUDE_DIRS}
 )
 
 target_link_libraries(pe_ars408_parser PRIVATE
