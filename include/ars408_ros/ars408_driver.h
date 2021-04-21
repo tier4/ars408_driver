@@ -8,7 +8,6 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
-#include <boost/array.hpp>
 #include <boost/function.hpp>
 
 #include "ars408_ros/ars408_constants.h"

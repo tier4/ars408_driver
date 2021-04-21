@@ -18,12 +18,21 @@ find_package(sensor_msgs REQUIRED)
 find_package(can_msgs REQUIRED)
 #find_package(socketcan_bridge REQUIRED)
 find_package(unique_identifier_msgs REQUIRED)
+find_package(Boost REQUIRED)
 
 # Driver Library
 include_directories(include/)
 
 add_library(pe_ars408_parser
    src/ars408_driver.cpp
+)
+
+target_include_directories(pe_ars408_parser PRIVATE
+   ${Boost_DIRECTORIES}
+)
+
+target_link_libraries(pe_ars408_parser PRIVATE
+        ${Boost_LIBRARIES}
 )
 
 # ROS node
