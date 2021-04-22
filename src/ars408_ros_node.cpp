@@ -6,7 +6,8 @@
 PeContinentalArs408Node::PeContinentalArs408Node() : Node("ars408_node"),
     ars408_driver_()
 {
-
+    GenerateUUIDTable();
+    Run();
 }
 
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
@@ -50,6 +51,7 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::Radar
   autoware_perception_msgs::msg::DynamicObject out_object;
 
 //  out_object.id = unique_identifier_msgs::toMsg(unique_identifier_msgs::fromRandom());
+  out_object.id = UUID_table_[in_object.id];
   out_object.semantic.type = ConvertRadarClassToAwSemanticClass(in_object.object_class);
   out_object.shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
   out_object.shape.dimensions.x = 1.0;
@@ -91,11 +93,28 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_
   publisher_dynamic_object_array_->publish(aw_output_objects);
 }
 
+unique_identifier_msgs::msg::UUID PeContinentalArs408Node::GenerateRandomUUID()
+{
+    unique_identifier_msgs::msg::UUID uuid;
+    std::mt19937 gen(std::random_device{} ());
+    std::independent_bits_engine<std::mt19937, 8, uint8_t> bit_eng(gen);
+    std::generate(uuid.uuid.begin(), uuid.uuid.end(), bit_eng);
+    return uuid;
+}
+
+void PeContinentalArs408Node::GenerateUUIDTable()
+{
+  for (size_t i=0; i<=max_radar_id; i++) {
+    UUID_table_.emplace_back(PeContinentalArs408Node::GenerateRandomUUID());
+  }
+}
+
+
 void PeContinentalArs408Node::Run()
 {
   std::string can_input_topic, object_output_topic;
 
-  can_input_topic = this->declare_parameter<std::string>("can_input_topic", "can_raw");
+  can_input_topic = this->declare_parameter<std::string>("can_input_topic", "/can_raw");
   object_output_topic = this->declare_parameter<std::string>("object_output_topic", "/detection/radar/objects");
   output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
 
@@ -114,17 +133,12 @@ void PeContinentalArs408Node::Run()
     this->create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(object_output_topic,
                                                                                 10);
 
-    rclcpp::spin(std::make_shared<PeContinentalArs408Node>());
 }
-
 
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-
-  PeContinentalArs408Node app;
-
-  app.Run();
-
+  rclcpp::spin(std::make_shared<PeContinentalArs408Node>());
+  rclcpp::shutdown();
   return 0;
 }

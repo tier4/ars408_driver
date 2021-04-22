@@ -11,7 +11,7 @@
   <depend>autoware_perception_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>can_msgs</depend>
-<!--  <depend>socketcan_bridge</depend>-->
+  <depend>ros2_socketcan</depend>
   <depend>unique_identifier_msgs</depend>
 
   <export>

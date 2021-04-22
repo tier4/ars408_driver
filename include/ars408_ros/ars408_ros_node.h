@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <random>
 
 #include <rclcpp/rclcpp.hpp>
 #include <can_msgs/msg/frame.hpp>
@@ -22,15 +23,25 @@ class PeContinentalArs408Node : public rclcpp::Node {
 
   std::string output_frame_;
 
+  const uint8_t max_radar_id = 255;
+  std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
+
   ars408::Ars408Driver ars408_driver_;
 
   void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
 
-  static autoware_perception_msgs::msg::DynamicObject
+  void GenerateUUIDTable();
+
+  autoware_perception_msgs::msg::DynamicObject
   ConvertRadarObjectToAwDynamicObject(const ars408::RadarObject& in_object);
 
   static uint32_t
   ConvertRadarClassToAwSemanticClass(const ars408::Obj_3_Extended::ObjectClassProperty& in_radar_class);
+
+  static unique_identifier_msgs::msg::UUID
+  GenerateRandomUUID();
+
+
 
 public:
   PeContinentalArs408Node();

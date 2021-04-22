@@ -16,7 +16,7 @@ find_package(rclcpp REQUIRED)
 find_package(autoware_perception_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(can_msgs REQUIRED)
-#find_package(socketcan_bridge REQUIRED)
+find_package(ros2_socketcan REQUIRED)
 find_package(unique_identifier_msgs REQUIRED)
 find_package(Boost REQUIRED)
 
@@ -48,14 +48,12 @@ target_link_libraries(pe_ars408_node
 )
 
 install(TARGETS pe_ars408_node pe_ars408_parser
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION bin
-   RUNTIME DESTINATION bin
+   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY launch/
    DESTINATION share/${PROJECT_NAME}
-   FILES_MATCHING PATTERN "*.launch"
+   FILES_MATCHING PATTERN "*.launch.xml"
 )
 
 ament_package()
