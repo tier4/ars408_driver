@@ -9,7 +9,6 @@
 
   <depend>autoware_perception_msgs</depend>
   <depend>can_msgs</depend>
-  <depend>libboost-dev</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>

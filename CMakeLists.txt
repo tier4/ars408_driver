@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 project(pe_ars408_ros)
 
-if (NOT "${CMAKE_CXX_STANDARD}")
+if(NOT "${CMAKE_CXX_STANDARD}")
   set(CMAKE_CXX_STANDARD 14)
-endif ()
+endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
@@ -17,24 +17,16 @@ find_package(Boost REQUIRED)
 
 # Driver Library
 ament_auto_add_library(pe_ars408_parser SHARED
-   src/ars408_driver.cpp
-)
-
-target_include_directories(pe_ars408_parser PRIVATE
-   ${Boost_INCLUDE_DIRS}
-)
-
-target_link_libraries(pe_ars408_parser PRIVATE
-   ${Boost_LIBRARIES}
+  src/ars408_driver.cpp
 )
 
 # ROS node
 ament_auto_add_library(pe_ars408_node_component SHARED
-   src/ars408_ros_node.cpp
+  src/ars408_ros_node.cpp
 )
 
 target_link_libraries(pe_ars408_node_component
-   pe_ars408_parser
+  pe_ars408_parser
 )
 
 rclcpp_components_register_node(pe_ars408_node_component
