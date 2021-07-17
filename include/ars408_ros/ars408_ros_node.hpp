@@ -26,7 +26,7 @@ class PeContinentalArs408Node : public rclcpp::Node {
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
 
-  ars408::Ars408Driver ars408_driver_;
+  ars408::Ars408Driver ars408_driver_{};
 
   void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
 
@@ -44,7 +44,7 @@ class PeContinentalArs408Node : public rclcpp::Node {
 
 
 public:
-  PeContinentalArs408Node();
+  explicit PeContinentalArs408Node(const rclcpp::NodeOptions & node_options);
   void RadarDetectedObjectsCallback(const std::unordered_map<uint8_t, ars408::RadarObject>& detected_objects);
   void Run();
 };

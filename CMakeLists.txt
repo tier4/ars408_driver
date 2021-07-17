@@ -11,19 +11,12 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(autoware_perception_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(can_msgs REQUIRED)
-find_package(ros2_socketcan REQUIRED)
-find_package(unique_identifier_msgs REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 find_package(Boost REQUIRED)
 
 # Driver Library
-include_directories(include/)
-
-add_library(pe_ars408_parser
+ament_auto_add_library(pe_ars408_parser SHARED
    src/ars408_driver.cpp
 )
 
@@ -32,28 +25,29 @@ target_include_directories(pe_ars408_parser PRIVATE
 )
 
 target_link_libraries(pe_ars408_parser PRIVATE
-        ${Boost_LIBRARIES}
+   ${Boost_LIBRARIES}
 )
 
 # ROS node
-add_executable(pe_ars408_node
+ament_auto_add_library(pe_ars408_node_component SHARED
    src/ars408_ros_node.cpp
 )
-ament_target_dependencies(pe_ars408_node
-   rclcpp autoware_perception_msgs sensor_msgs can_msgs unique_identifier_msgs
-)
 
-target_link_libraries(pe_ars408_node
+target_link_libraries(pe_ars408_node_component
    pe_ars408_parser
 )
 
-install(TARGETS pe_ars408_node pe_ars408_parser
-   DESTINATION lib/${PROJECT_NAME}
+rclcpp_components_register_node(pe_ars408_node_component
+  PLUGIN "PeContinentalArs408Node"
+  EXECUTABLE pe_ars408_node
 )
 
-install(DIRECTORY launch/
-   DESTINATION share/${PROJECT_NAME}
-   FILES_MATCHING PATTERN "*.launch.xml"
-)
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-ament_package()
+ament_auto_package(
+  INSTALL_TO_SHARE
+    launch
+)

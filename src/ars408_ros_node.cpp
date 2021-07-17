@@ -3,8 +3,8 @@
  */
 #include "ars408_ros/ars408_ros_node.hpp"
 
-PeContinentalArs408Node::PeContinentalArs408Node() : Node("ars408_node"),
-    ars408_driver_()
+PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
+: Node("ars408_node", node_options)
 {
     GenerateUUIDTable();
     Run();
@@ -135,10 +135,5 @@ void PeContinentalArs408Node::Run()
 
 }
 
-int main(int argc, char **argv)
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<PeContinentalArs408Node>());
-  rclcpp::shutdown();
-  return 0;
-}
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(PeContinentalArs408Node)
