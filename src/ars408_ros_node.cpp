@@ -126,12 +126,6 @@ void PeContinentalArs408Node::GenerateUUIDTable()
 
 void PeContinentalArs408Node::Run()
 {
-  std::string can_input_topic, object_output_topic;
-
-  can_input_topic = this->declare_parameter<std::string>("can_input_topic", "/can_raw");
-  object_output_topic = this->declare_parameter<std::string>(
-    "object_output_topic",
-    "/detection/radar/objects");
   output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
 
   ars408_driver_.RegisterDetectedObjectsCallback(
@@ -141,16 +135,14 @@ void PeContinentalArs408Node::Run()
       std::placeholders::_1));
 
   subscription_ = this->create_subscription<can_msgs::msg::Frame>(
-    can_input_topic, 10,
+    "~/input/frame", 10,
     std::bind(
       &PeContinentalArs408Node::CanFrameCallback,
       this, std::placeholders::_1));
 
-  RCLCPP_INFO_STREAM(this->get_logger(), "Subscribed to " << can_input_topic);
-
   publisher_dynamic_object_array_ =
     this->create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(
-    object_output_topic, 10);
+    "~/output/objects", 10);
 }
 
 #include "rclcpp_components/register_node_macro.hpp"
