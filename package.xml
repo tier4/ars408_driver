@@ -5,14 +5,20 @@
   <description>Continental ARS408-21 Driver</description>
   <maintainer email="abraham.monrroy@tier4.jp">Abraham Monrroy</maintainer>
   <license>Private</license>
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <depend>rclcpp</depend>
   <depend>autoware_perception_msgs</depend>
-  <depend>sensor_msgs</depend>
   <depend>can_msgs</depend>
-  <depend>ros2_socketcan</depend>
+  <depend>libboost-dev</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>sensor_msgs</depend>
   <depend>unique_identifier_msgs</depend>
+
+  <exec_depend>ros2_socketcan</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
