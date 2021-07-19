@@ -6,7 +6,7 @@
 #define PE_ARS408_ROS_ARS408_COMMANDS_H
 
 #include <sstream>
-#include "ars408_ros/ars408_constants.h"
+#include "ars408_ros/ars408_constants.hpp"
 
 namespace ars408
 {

@@ -13,7 +13,7 @@
 #include <can_msgs/msg/frame.hpp>
 #include <unique_identifier_msgs/msg/uuid.h>
 
-#include "ars408_ros/ars408_driver.h"
+#include "ars408_ros/ars408_driver.hpp"
 #include "autoware_perception_msgs/msg/dynamic_object_array.hpp"
 
 class PeContinentalArs408Node : public rclcpp::Node {
