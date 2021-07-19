@@ -1,28 +1,41 @@
-/*
- * Copyright 2021. Perception Engine Inc. All rights reserved.
- */
+// Copyright 2021 Perception Engine, Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <string>
+#include <unordered_map>
+
 #include "ars408_ros/ars408_ros_node.hpp"
 
-PeContinentalArs408Node::PeContinentalArs408Node() : Node("ars408_node"),
-    ars408_driver_()
+PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
+: Node("ars408_node", node_options)
 {
-    GenerateUUIDTable();
-    Run();
+  GenerateUUIDTable();
+  Run();
 }
 
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
 {
-  if (!can_msg->data.empty())
-  {
+  if (!can_msg->data.empty()) {
     ars408_driver_.Parse(can_msg->id, can_msg->data, can_msg->dlc);
   }
 }
 
 uint32_t
-PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(const ars408::Obj_3_Extended::ObjectClassProperty& in_radar_class)
+PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(
+  const ars408::Obj_3_Extended::ObjectClassProperty & in_radar_class)
 {
-  switch (in_radar_class)
-  {
+  switch (in_radar_class) {
     case ars408::Obj_3_Extended::BICYCLE:
       return autoware_perception_msgs::msg::Semantic::BICYCLE;
       break;
@@ -46,7 +59,7 @@ PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(const ars408::Obj_3_
 }
 
 autoware_perception_msgs::msg::DynamicObject
-PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::RadarObject& in_object)
+PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::RadarObject & in_object)
 {
   autoware_perception_msgs::msg::DynamicObject out_object;
 
@@ -75,8 +88,9 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDynamicObject(const ars408::Radar
   return out_object;
 }
 
-void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_map<uint8_t ,
-                                                           ars408::RadarObject>& detected_objects)
+void PeContinentalArs408Node::RadarDetectedObjectsCallback(
+  const std::unordered_map<uint8_t,
+  ars408::RadarObject> & detected_objects)
 {
   autoware_perception_msgs::msg::DynamicObjectArray aw_output_objects;
 
@@ -84,10 +98,10 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_
   rclcpp::Time current_time = this->get_clock()->now();
   aw_output_objects.header.stamp = current_time;
 
-  for(auto object: detected_objects)
-  {
+  for (const auto & object : detected_objects) {
     // RCLCPP_INFO_STREAM(this->get_logger(), object.second.ToString());
-    autoware_perception_msgs::msg::DynamicObject aw_object = ConvertRadarObjectToAwDynamicObject(object.second);
+    autoware_perception_msgs::msg::DynamicObject aw_object = ConvertRadarObjectToAwDynamicObject(
+      object.second);
     aw_output_objects.objects.emplace_back(aw_object);
   }
   publisher_dynamic_object_array_->publish(aw_output_objects);
@@ -95,16 +109,16 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(const std::unordered_
 
 unique_identifier_msgs::msg::UUID PeContinentalArs408Node::GenerateRandomUUID()
 {
-    unique_identifier_msgs::msg::UUID uuid;
-    std::mt19937 gen(std::random_device{} ());
-    std::independent_bits_engine<std::mt19937, 8, uint8_t> bit_eng(gen);
-    std::generate(uuid.uuid.begin(), uuid.uuid.end(), bit_eng);
-    return uuid;
+  unique_identifier_msgs::msg::UUID uuid;
+  std::mt19937 gen(std::random_device{} ());
+  std::independent_bits_engine<std::mt19937, 8, uint8_t> bit_eng(gen);
+  std::generate(uuid.uuid.begin(), uuid.uuid.end(), bit_eng);
+  return uuid;
 }
 
 void PeContinentalArs408Node::GenerateUUIDTable()
 {
-  for (size_t i=0; i<=max_radar_id; i++) {
+  for (size_t i = 0; i <= max_radar_id; i++) {
     UUID_table_.emplace_back(PeContinentalArs408Node::GenerateRandomUUID());
   }
 }
@@ -112,33 +126,24 @@ void PeContinentalArs408Node::GenerateUUIDTable()
 
 void PeContinentalArs408Node::Run()
 {
-  std::string can_input_topic, object_output_topic;
-
-  can_input_topic = this->declare_parameter<std::string>("can_input_topic", "/can_raw");
-  object_output_topic = this->declare_parameter<std::string>("object_output_topic", "/detection/radar/objects");
   output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
 
   ars408_driver_.RegisterDetectedObjectsCallback(
-    std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback,
-                this,
-                 std::placeholders::_1));
+    std::bind(
+      &PeContinentalArs408Node::RadarDetectedObjectsCallback,
+      this,
+      std::placeholders::_1));
 
-  subscription_ = this->create_subscription<can_msgs::msg::Frame>(can_input_topic, 10,
-                                                                  std::bind(&PeContinentalArs408Node::CanFrameCallback,
-                                                                            this, std::placeholders::_1));
-
-  RCLCPP_INFO_STREAM(this->get_logger(), "Subscribed to " << can_input_topic);
+  subscription_ = this->create_subscription<can_msgs::msg::Frame>(
+    "~/input/frame", 10,
+    std::bind(
+      &PeContinentalArs408Node::CanFrameCallback,
+      this, std::placeholders::_1));
 
   publisher_dynamic_object_array_ =
-    this->create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(object_output_topic,
-                                                                                10);
-
+    this->create_publisher<autoware_perception_msgs::msg::DynamicObjectArray>(
+    "~/output/objects", 10);
 }
 
-int main(int argc, char **argv)
-{
-  rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<PeContinentalArs408Node>());
-  rclcpp::shutdown();
-  return 0;
-}
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(PeContinentalArs408Node)
