@@ -10,9 +10,9 @@
 #include <unordered_map>
 #include <boost/function.hpp>
 
-#include "ars408_ros/ars408_constants.h"
-#include "ars408_ros/ars408_commands.h"
-#include "ars408_ros/ars408_object.h"
+#include "ars408_ros/ars408_constants.hpp"
+#include "ars408_ros/ars408_commands.hpp"
+#include "ars408_ros/ars408_object.hpp"
 
 namespace ars408
 {

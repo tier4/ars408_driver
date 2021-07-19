@@ -1,7 +1,7 @@
 /*
  * Copyright 2021. Perception Engine Inc. All rights reserved.
  */
-#include "ars408_ros/ars408_ros_node.h"
+#include "ars408_ros/ars408_ros_node.hpp"
 
 PeContinentalArs408Node::PeContinentalArs408Node() : Node("ars408_node"),
     ars408_driver_()
