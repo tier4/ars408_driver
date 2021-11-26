@@ -7,7 +7,7 @@
   <license>Private</license>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <depend>autoware_perception_msgs</depend>
+  <depend>autoware_auto_perception_msgs</depend>
   <depend>can_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>

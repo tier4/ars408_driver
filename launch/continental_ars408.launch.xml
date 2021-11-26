@@ -3,6 +3,7 @@
   <arg name="receiver_interval_sec" default="0.01" />
   <arg name="input/frame" default="from_can_bus" />
   <arg name="output/objects" default="objects" />
+  <arg name="use_tracked_object" default="false"/>
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py">
     <arg name="interface" value="$(var interface)" />
@@ -12,5 +13,6 @@
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />
     <remap from="~/output/objects" to="$(var output/objects)" />
+    <param name="use_tracked_object" value="$(var use_tracked_object)"/>
   </node>
 </launch>
