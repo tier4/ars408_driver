@@ -41,7 +41,7 @@ class PeContinentalArs408Node : public rclcpp::Node
 
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
-  bool use_tracked_object_;
+  bool publish_tracked_object_;
 
   ars408::Ars408Driver ars408_driver_{};
 

@@ -20,7 +20,7 @@
 PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
 : Node("ars408_node", node_options)
 {
-  use_tracked_object_ = declare_parameter("use_tracked_object", false);
+  publish_tracked_object_ = declare_parameter("use_tracked_object", false);
   GenerateUUIDTable();
   Run();
 }
@@ -119,7 +119,7 @@ PeContinentalArs408Node::ConvertRadarObjectToAwTrackedObject(const ars408::Radar
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects)
 {
-  if (use_tracked_object_) {
+  if (publish_tracked_object_) {
     autoware_auto_perception_msgs::msg::TrackedObjects aw_output_objects;
 
     aw_output_objects.header.frame_id = output_frame_;
@@ -174,7 +174,7 @@ void PeContinentalArs408Node::Run()
   subscription_ = this->create_subscription<can_msgs::msg::Frame>(
     "~/input/frame", 10,
     std::bind(&PeContinentalArs408Node::CanFrameCallback, this, std::placeholders::_1));
-  if (use_tracked_object_) {
+  if (publish_tracked_object_) {
     publisher_tracked_objects_ =
       this->create_publisher<autoware_auto_perception_msgs::msg::TrackedObjects>(
         "~/output/objects", 10);
