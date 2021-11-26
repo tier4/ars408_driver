@@ -67,13 +67,18 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDetectedObject(const ars408::Rada
   classification.label = ConvertRadarClassToAwSemanticClass(in_object.object_class);
   classification.probability = in_object.rcs;
   out_object.classification.emplace_back(classification);
+  out_object.existence_probability = in_object.probability_existence;
   out_object.shape.type = autoware_auto_perception_msgs::msg::Shape::BOUNDING_BOX;
   out_object.shape.dimensions.x = 1.0;
   out_object.shape.dimensions.y = 1.0;
   out_object.shape.dimensions.z = 2.0;
 
+  out_object.kinematics.orientation_availability =
+    autoware_auto_perception_msgs::msg::DetectedObjectKinematics::AVAILABLE;
+  out_object.kinematics.has_position_covariance = false;
   out_object.kinematics.pose_with_covariance.pose.position.x = in_object.distance_long_x;
   out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
+  out_object.kinematics.pose_with_covariance.pose.orientation.z = in_object.orientation_angle;
 
   out_object.kinematics.has_twist = true;
   out_object.kinematics.has_twist_covariance = false;
@@ -100,8 +105,11 @@ PeContinentalArs408Node::ConvertRadarObjectToAwTrackedObject(const ars408::Radar
   out_object.shape.dimensions.y = 1.0;
   out_object.shape.dimensions.z = 2.0;
 
+  out_object.kinematics.orientation_availability =
+    autoware_auto_perception_msgs::msg::TrackedObjectKinematics::AVAILABLE;
   out_object.kinematics.pose_with_covariance.pose.position.x = in_object.distance_long_x;
   out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
+  out_object.kinematics.pose_with_covariance.pose.orientation.z = in_object.orientation_angle;
 
   out_object.kinematics.twist_with_covariance.twist.linear.x = in_object.speed_long_x;
   out_object.kinematics.twist_with_covariance.twist.linear.y = in_object.speed_lat_y;
