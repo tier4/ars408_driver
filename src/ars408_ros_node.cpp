@@ -76,6 +76,7 @@ PeContinentalArs408Node::ConvertRadarObjectToAwDetectedObject(const ars408::Rada
   out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
 
   out_object.kinematics.has_twist = true;
+  out_object.kinematics.has_twist_covariance = false;
   out_object.kinematics.twist_with_covariance.twist.linear.x = in_object.speed_long_x;
   out_object.kinematics.twist_with_covariance.twist.linear.y = in_object.speed_lat_y;
   out_object.kinematics.twist_with_covariance.twist.angular.x = in_object.speed_long_x;
