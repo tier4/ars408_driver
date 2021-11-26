@@ -103,7 +103,6 @@ PeContinentalArs408Node::ConvertRadarObjectToAwTrackedObject(const ars408::Radar
   out_object.kinematics.pose_with_covariance.pose.position.x = in_object.distance_long_x;
   out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
 
-  out_object.kinematics.orientation_availability = true;
   out_object.kinematics.twist_with_covariance.twist.linear.x = in_object.speed_long_x;
   out_object.kinematics.twist_with_covariance.twist.linear.y = in_object.speed_lat_y;
   out_object.kinematics.twist_with_covariance.twist.angular.x = in_object.speed_long_x;
