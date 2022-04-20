@@ -26,23 +26,37 @@ sudo ip link set can0 up type can bitrate 500000
 4. Launch the driver
 
 ```
-roslaunch pe_ars408_ros continental_ars408.launch
+roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 ```
 
 ## Design
 ### Parameters
 
-| Parameter    | Description                                           | Default   |
-| ------------ | ----------------------------------------------------- | --------- |
-| `can_device` | Device name of the can interface                      | `can0`    |
-| `can_topic`  | Topic on which socketcan will publish the can raw msg | `can_raw` |
+| Parameter    | Description                                                                                 | Default       |
 
-### Launcher
+-  `can_device`
+   - Device name of the can interface
+   - Default is `can0`
+-  `can_topic`
+   - Topic on which socketcan will publish the can raw msg
+   - Default is  `can_raw`
+-  `topic_type`
+   -  Published topic type.
+   -  Choose among
+      - `RadarTracks`: https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTracks.msg
+      - `DetectedObjects`: autoware_auto_msgs/autoware_auto_perception_msgs/TrackedObjects
+      - `TrackedObjects`: autoware_auto_msgs/autoware_auto_perception_msgs/DetectedObjects
+   -  Default is `RadarTracks`
+
+### Launch
 
 The launch file will initiate two nodes:
+
 1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
 1. Continental ARS408 driver will read the `can_raw`, parse and publish the detected objects using the Autoware.universe
    `autoware_auto_msgs/autoware_auto_perception_msgs/TrackedObjects` in the topic `/objects`.
+
+If you want to visualize, you should choose `TrackedObjects` and visualize in rviz using autoware.
 
 ## Reference
 
