@@ -1,14 +1,7 @@
 <launch>
-  <arg name="interface" default="can0" />
-  <arg name="receiver_interval_sec" default="0.01" />
   <arg name="input/frame" default="from_can_bus" />
   <arg name="output/objects" default="objects" />
   <arg name="publish_tracked_object" default="false"/>
-
-  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py">
-    <arg name="interface" value="$(var interface)" />
-    <arg name="interval_sec" value="$(var receiver_interval_sec)" />
-  </include>
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />
