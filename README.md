@@ -1,40 +1,49 @@
-# Perception Engine's Continental ARS408 Driver
-This is an experimental ROS2 build of this driver!
+# Continental ARS408 Driver
 
-## How to compile
-You will need to install ```autoware_perception_msgs``` manually.
+This is Continental ARS408 Driver for ROS2.
+
+## How to use
+
+1. build environment
+
 ```
-$ git clone --branch ros2 https://gitlab.com/perceptionengine/pe-drivers/ars408_ros.git pe_ars408_ws/src && cd pe_ars408_ws
+$ vcs import . < build_depends.repos
 $ rosdep install --from-paths src --ignore-src -r -y
+```
+
+2. build
+
+```
 $ colcon build
 ```
-## To do
-1. Port socketcan bridge to ROS2
-1. Port unique_id to ROS2 - only unique_identifier_msgs are supported now but related functionality is not.
 
-## How to run
-1. Enable can port
-`sudo ip link set can0 up type can bitrate 500000`
+3. Enable can port
 
-2. Launch the driver
-`roslaunch pe_ars408_ros continental_ars408.launch`
-   
+```
+sudo ip link set can0 up type can bitrate 500000
+```
+
+4. Launch the driver
+
+```
+roslaunch pe_ars408_ros continental_ars408.launch
+```
+
+## Design
 ### Parameters
 
-|Parameter|Description|Default|
-|---|---|---|
-|`can_device`|Device name of the can interface|`can0`|
-|`can_topic`|Topic on which socketcan will publish the can raw msg|`can_raw`|
+| Parameter    | Description                                           | Default   |
+| ------------ | ----------------------------------------------------- | --------- |
+| `can_device` | Device name of the can interface                      | `can0`    |
+| `can_topic`  | Topic on which socketcan will publish the can raw msg | `can_raw` |
 
-# Driver
+### Launcher
 
 The launch file will initiate two nodes:
 1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
-1. Continental ARS408 driver will read the `can_raw`, parse and publish the detected objects using the Autoware.IV
-   `autoware_perception_msgs/DynamicObjectArray` in the topic `/detection/radar/objects`.
+1. Continental ARS408 driver will read the `can_raw`, parse and publish the detected objects using the Autoware.universe
+   `autoware_auto_msgs/autoware_auto_perception_msgs/TrackedObjects` in the topic `/objects`.
 
-# Visualization
+## Reference
 
-To visualize the objects the Autoware's `dynamic_object_visualizer` needs to be launched and subscribe to `/detection/radar/objects`.
-
-i.e.`roslaunch dynamic_object_visualization dynamic_object_visualizer.launch with_feature:=False input:=/detection/radar/objects`
+- Fork from original package [Perception Engine's Continental ARS408 Driver](https://gitlab.com/perceptionengine/pe-drivers/ars408_ros)
