@@ -54,3 +54,4 @@ CATKIN_IGNORE
 
 .idea
 cmake-build-*/
+.vscode
