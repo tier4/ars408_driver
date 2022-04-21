@@ -21,6 +21,7 @@
 #include "autoware_auto_perception_msgs/msg/detected_objects.hpp"
 #include "autoware_auto_perception_msgs/msg/tracked_objects.hpp"
 #include "can_msgs/msg/frame.hpp"
+#include "radar_msgs/msg/radar_tracks.hpp"
 #include "unique_identifier_msgs/msg/uuid.hpp"
 
 #include <random>
@@ -36,12 +37,13 @@ class PeContinentalArs408Node : public rclcpp::Node
     publisher_detected_objects_;
   rclcpp::Publisher<autoware_auto_perception_msgs::msg::TrackedObjects>::SharedPtr
     publisher_tracked_objects_;
+  rclcpp::Publisher<radar_msgs::msg::RadarTracks>::SharedPtr publisher_radar_tracks_;
 
   std::string output_frame_;
 
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
-  bool publish_tracked_object_;
+  std::string topic_type_;
 
   ars408::Ars408Driver ars408_driver_{};
 
@@ -54,6 +56,8 @@ class PeContinentalArs408Node : public rclcpp::Node
 
   autoware_auto_perception_msgs::msg::TrackedObject ConvertRadarObjectToAwTrackedObject(
     const ars408::RadarObject & in_object);
+
+  radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
 
   static uint32_t ConvertRadarClassToAwSemanticClass(
     const ars408::Obj_3_Extended::ObjectClassProperty & in_radar_class);

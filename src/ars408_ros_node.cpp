@@ -20,7 +20,7 @@
 PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
 : Node("ars408_node", node_options)
 {
-  publish_tracked_object_ = declare_parameter("use_tracked_object", false);
+  topic_type_ = declare_parameter("topic_type", "RadarTrack");
   GenerateUUIDTable();
   Run();
 }
@@ -124,10 +124,59 @@ PeContinentalArs408Node::ConvertRadarObjectToAwTrackedObject(const ars408::Radar
   return out_object;
 }
 
+radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object)
+{
+  radar_msgs::msg::RadarTrack out_object;
+
+  /*
+
+  out_object.object_id = UUID_table_[in_object.id];
+  classification.label = ConvertRadarClassToAwSemanticClass(in_object.object_class);
+  classification.probability = in_object.rcs;
+  out_object.classification.emplace_back(classification);
+  out_object.shape.type = autoware_auto_perception_msgs::msg::Shape::BOUNDING_BOX;
+  out_object.shape.dimensions.x = 1.0;
+  out_object.shape.dimensions.y = 1.0;
+  out_object.shape.dimensions.z = 2.0;
+
+  out_object.kinematics.orientation_availability =
+    autoware_auto_perception_msgs::msg::TrackedObjectKinematics::AVAILABLE;
+  out_object.kinematics.pose_with_covariance.pose.position.x = in_object.distance_long_x;
+  out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
+  out_object.kinematics.pose_with_covariance.pose.orientation.z = in_object.orientation_angle;
+
+  out_object.kinematics.twist_with_covariance.twist.linear.x = in_object.speed_long_x;
+  out_object.kinematics.twist_with_covariance.twist.linear.y = in_object.speed_lat_y;
+  out_object.kinematics.twist_with_covariance.twist.angular.x = in_object.speed_long_x;
+  out_object.kinematics.twist_with_covariance.twist.angular.y = in_object.speed_lat_y;
+
+  out_object.kinematics.acceleration_with_covariance.accel.angular.x =
+    in_object.rel_acceleration_long_x;
+  out_object.kinematics.acceleration_with_covariance.accel.angular.y =
+    in_object.rel_acceleration_lat_y;
+
+  - std_msgs/Header header
+  - radar_msgs/RadarTrack[] tracks
+    - unique_identifier_msgs/UUID uuid
+    - geometry_msgs/Point position
+    - geometry_msgs/Vector3 velocity
+    - geometry_msgs/Vector3 acceleration
+    - geometry_msgs/Vector3 size # length, width, height
+    - uint16 classification
+      - uint16 NO_CLASSIFICATION=0
+      - uint16 STATIC=1
+      - uint16 DYNAMIC=2
+    - float32[6] position_covariance
+    - float32[6] velocity_covariance
+    - float32[6] acceleration_covariance
+    - float32[6] size_covariance
+  */
+}
+
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects)
 {
-  if (publish_tracked_object_) {
+  if (topic_type_ == "TrackedObject") {
     autoware_auto_perception_msgs::msg::TrackedObjects aw_output_objects;
 
     aw_output_objects.header.frame_id = output_frame_;
@@ -140,7 +189,7 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
       aw_output_objects.objects.emplace_back(aw_object);
       publisher_tracked_objects_->publish(aw_output_objects);
     }
-  } else {
+  } else if (topic_type_ == "DetectedObject") {
     autoware_auto_perception_msgs::msg::DetectedObjects aw_output_objects;
 
     aw_output_objects.header.frame_id = output_frame_;
@@ -153,6 +202,20 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
       aw_output_objects.objects.emplace_back(aw_object);
       publisher_detected_objects_->publish(aw_output_objects);
     }
+  } else if (topic_type_ == "RadarTrack") {
+    radar_msgs::msg::RadarTracks output_objects;
+    output_objects.header.frame_id = output_frame_;
+
+    rclcpp::Time current_time = this->get_clock()->now();
+    output_objects.header.stamp = current_time;
+
+    for (const auto & object : detected_objects) {
+      radar_msgs::msg::RadarTrack object_ = ConvertRadarObjectToRadarTrack(object.second);
+      output_objects.tracks.emplace_back(object_);
+      publisher_radar_tracks_->publish(output_objects);
+    }
+  } else {
+    std::cout << "mode is invalid" << std::endl;
   }
 }
 
@@ -182,14 +245,18 @@ void PeContinentalArs408Node::Run()
   subscription_ = this->create_subscription<can_msgs::msg::Frame>(
     "~/input/frame", 10,
     std::bind(&PeContinentalArs408Node::CanFrameCallback, this, std::placeholders::_1));
-  if (publish_tracked_object_) {
+
+  if (topic_type_ == "TrackedObject") {
     publisher_tracked_objects_ =
       this->create_publisher<autoware_auto_perception_msgs::msg::TrackedObjects>(
         "~/output/objects", 10);
-  } else {
+  } else if (topic_type_ == "DetectedObject") {
     publisher_detected_objects_ =
       this->create_publisher<autoware_auto_perception_msgs::msg::DetectedObjects>(
         "~/output/objects", 10);
+  } else if (topic_type_ == "RadarTrack") {
+    publisher_radar_tracks_ =
+      this->create_publisher<radar_msgs::msg::RadarTracks>("~/output/objects", 10);
   }
 }
 

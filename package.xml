@@ -13,6 +13,7 @@
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
   <depend>unique_identifier_msgs</depend>
+  <depend>radar_msgs</depend>
 
   <exec_depend>ros2_socketcan</exec_depend>
 
