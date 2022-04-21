@@ -43,9 +43,9 @@ roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 -  `topic_type`
    -  Published topic type.
    -  Choose among
-      - `RadarTracks`: https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTracks.msg
-      - `DetectedObjects`: autoware_auto_msgs/autoware_auto_perception_msgs/TrackedObjects
-      - `TrackedObjects`: autoware_auto_msgs/autoware_auto_perception_msgs/DetectedObjects
+      - `RadarTrack`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTrack.msg>
+      - `DetectedObject`: autoware_auto_msgs/autoware_auto_perception_msgs/TrackedObject
+      - `TrackedObject`: autoware_auto_msgs/autoware_auto_perception_msgs/DetectedObject
    -  Default is `RadarTracks`
 
 ### Launch
