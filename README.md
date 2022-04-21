@@ -32,8 +32,6 @@ roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 ## Design
 ### Parameters
 
-| Parameter    | Description                                                                                 | Default       |
-
 -  `can_device`
    - Device name of the can interface
    - Default is `can0`
