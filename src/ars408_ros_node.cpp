@@ -124,53 +124,26 @@ PeContinentalArs408Node::ConvertRadarObjectToAwTrackedObject(const ars408::Radar
   return out_object;
 }
 
-radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object)
+radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTrack(
+  const ars408::RadarObject & in_object)
 {
   radar_msgs::msg::RadarTrack out_object;
+  out_object.uuid = UUID_table_[in_object.id];
 
-  /*
+  out_object.position.x = in_object.distance_long_x;
+  out_object.position.y = in_object.distance_lat_y;
 
-  out_object.object_id = UUID_table_[in_object.id];
-  classification.label = ConvertRadarClassToAwSemanticClass(in_object.object_class);
-  classification.probability = in_object.rcs;
-  out_object.classification.emplace_back(classification);
-  out_object.shape.type = autoware_auto_perception_msgs::msg::Shape::BOUNDING_BOX;
-  out_object.shape.dimensions.x = 1.0;
-  out_object.shape.dimensions.y = 1.0;
-  out_object.shape.dimensions.z = 2.0;
+  out_object.velocity.x = in_object.speed_long_x;
+  out_object.velocity.y = in_object.speed_lat_y;
 
-  out_object.kinematics.orientation_availability =
-    autoware_auto_perception_msgs::msg::TrackedObjectKinematics::AVAILABLE;
-  out_object.kinematics.pose_with_covariance.pose.position.x = in_object.distance_long_x;
-  out_object.kinematics.pose_with_covariance.pose.position.y = in_object.distance_lat_y;
-  out_object.kinematics.pose_with_covariance.pose.orientation.z = in_object.orientation_angle;
+  out_object.acceleration.x = in_object.rel_acceleration_long_x;
+  out_object.acceleration.y = in_object.rel_acceleration_lat_y;
 
-  out_object.kinematics.twist_with_covariance.twist.linear.x = in_object.speed_long_x;
-  out_object.kinematics.twist_with_covariance.twist.linear.y = in_object.speed_lat_y;
-  out_object.kinematics.twist_with_covariance.twist.angular.x = in_object.speed_long_x;
-  out_object.kinematics.twist_with_covariance.twist.angular.y = in_object.speed_lat_y;
+  out_object.size.x = 1.0;
+  out_object.size.y = 1.0;
+  out_object.size.z = 2.0;
 
-  out_object.kinematics.acceleration_with_covariance.accel.angular.x =
-    in_object.rel_acceleration_long_x;
-  out_object.kinematics.acceleration_with_covariance.accel.angular.y =
-    in_object.rel_acceleration_lat_y;
-
-  - std_msgs/Header header
-  - radar_msgs/RadarTrack[] tracks
-    - unique_identifier_msgs/UUID uuid
-    - geometry_msgs/Point position
-    - geometry_msgs/Vector3 velocity
-    - geometry_msgs/Vector3 acceleration
-    - geometry_msgs/Vector3 size # length, width, height
-    - uint16 classification
-      - uint16 NO_CLASSIFICATION=0
-      - uint16 STATIC=1
-      - uint16 DYNAMIC=2
-    - float32[6] position_covariance
-    - float32[6] velocity_covariance
-    - float32[6] acceleration_covariance
-    - float32[6] size_covariance
-  */
+  out_object.classification = ConvertRadarClassToAwSemanticClass(in_object.object_class);
 }
 
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
