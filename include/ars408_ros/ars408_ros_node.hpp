@@ -18,8 +18,6 @@
 #include "ars408_ros/ars408_driver.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-#include "autoware_auto_perception_msgs/msg/detected_objects.hpp"
-#include "autoware_auto_perception_msgs/msg/tracked_objects.hpp"
 #include "can_msgs/msg/frame.hpp"
 #include "radar_msgs/msg/radar_tracks.hpp"
 #include "unique_identifier_msgs/msg/uuid.hpp"
@@ -33,10 +31,6 @@ class PeContinentalArs408Node : public rclcpp::Node
 {
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr subscriber_can_raw_;
   rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr subscription_;
-  rclcpp::Publisher<autoware_auto_perception_msgs::msg::DetectedObjects>::SharedPtr
-    publisher_detected_objects_;
-  rclcpp::Publisher<autoware_auto_perception_msgs::msg::TrackedObjects>::SharedPtr
-    publisher_tracked_objects_;
   rclcpp::Publisher<radar_msgs::msg::RadarTracks>::SharedPtr publisher_radar_tracks_;
 
   std::string output_frame_;
@@ -50,12 +44,6 @@ class PeContinentalArs408Node : public rclcpp::Node
   void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
 
   void GenerateUUIDTable();
-
-  autoware_auto_perception_msgs::msg::DetectedObject ConvertRadarObjectToAwDetectedObject(
-    const ars408::RadarObject & in_object);
-
-  autoware_auto_perception_msgs::msg::TrackedObject ConvertRadarObjectToAwTrackedObject(
-    const ars408::RadarObject & in_object);
 
   radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
 

@@ -3,7 +3,7 @@ name: ROS2 CI
 on:
   pull_request:
     branches:
-      - tier4/ros2
+      - tier4/universe
 
 jobs:
   test_environment:
