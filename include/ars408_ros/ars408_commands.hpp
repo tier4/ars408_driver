@@ -15,10 +15,10 @@
 #ifndef ARS408_ROS__ARS408_COMMANDS_HPP_
 #define ARS408_ROS__ARS408_COMMANDS_HPP_
 
+#include "ars408_ros/ars408_constants.hpp"
+
 #include <sstream>
 #include <string>
-
-#include "ars408_ros/ars408_constants.hpp"
 
 namespace ars408
 {
@@ -26,15 +26,9 @@ namespace ars408
 class RadarCommand
 {
 public:
-  explicit RadarCommand(uint32_t CAN_ID)
-  {
-    CAN_ID_ = CAN_ID;
-  }
+  explicit RadarCommand(uint32_t CAN_ID) { CAN_ID_ = CAN_ID; }
 
-  virtual uint32_t GetCommandType()
-  {
-    return CAN_ID_;
-  }
+  virtual uint32_t GetCommandType() { return CAN_ID_; }
 
 protected:
   uint32_t CAN_ID_;
@@ -47,27 +41,27 @@ protected:
 class RadarCfg : RadarCommand
 {
 public:
-  RadarCfg()
-  : RadarCommand(ars408::RADAR_CFG) {}
-  bool UpdateMaxDistance;  /*Allow change of maximum distance if true*/
-  bool UpdateSensorID;  /*Allow change of sensor ID if true*/
-  bool UpdateRadarPower;  /*Allow change of radar output power if true*/
-  bool UpdateOutputType;  /*Allow change of output type if true*/
-  bool UpdateSendQuality;  /*Allow change of quality message option if true*/
-  bool UpdateSendExtInfo;  /*Allow change of extended info message option if true*/
-  bool UpdateSortIndex;  /*Allow change of sorting index if true*/
-  bool UpdateStoreInNVM;  /*Allow storing to non-volatile memory if true*/
-  bool UpdateInvalidClusters;  /*Allows changing the invalid clusters parameter if true*/
-  uint16_t MaxDistance;  /*Maximum detection distance*/
-  uint8_t SensorID;  /*Sensor ID 0 – 7*/
-  enum OutputTypeConfig {NONE,  /*0x0*/
-    OBJECTS,   /*0x1*/
-    CLUSTERS   /*0x2*/
+  RadarCfg() : RadarCommand(ars408::RADAR_CFG) {}
+  bool UpdateMaxDistance;     /*Allow change of maximum distance if true*/
+  bool UpdateSensorID;        /*Allow change of sensor ID if true*/
+  bool UpdateRadarPower;      /*Allow change of radar output power if true*/
+  bool UpdateOutputType;      /*Allow change of output type if true*/
+  bool UpdateSendQuality;     /*Allow change of quality message option if true*/
+  bool UpdateSendExtInfo;     /*Allow change of extended info message option if true*/
+  bool UpdateSortIndex;       /*Allow change of sorting index if true*/
+  bool UpdateStoreInNVM;      /*Allow storing to non-volatile memory if true*/
+  bool UpdateInvalidClusters; /*Allows changing the invalid clusters parameter if true*/
+  uint16_t MaxDistance;       /*Maximum detection distance*/
+  uint8_t SensorID;           /*Sensor ID 0 – 7*/
+  enum OutputTypeConfig {
+    NONE,    /*0x0*/
+    OBJECTS, /*0x1*/
+    CLUSTERS /*0x2*/
   };
   /* Configures the data output to clusters (0x2) or objects (0x1) */
   OutputTypeConfig OutputType;
   /* Current configuration of transmitted radar power parameter */
-  enum RadarPowerConfig {STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN};
+  enum RadarPowerConfig { STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN };
   RadarPowerConfig RadarPower;
   /*
    * Configures the transmitted radar power.
@@ -75,8 +69,7 @@ public:
    * Reducing the output power can improve detection
    * in case of close distance scenarios or inside rooms.
    */
-  bool
-    UpdateCtrlRelay;
+  bool UpdateCtrlRelay;
   /* Relay control message (0x8) is sent if true and the collision detection is activated */
   bool CtrlRelay;
   /* Cluster or object quality information (message 0x60C or 0x702) is sent if true */
@@ -87,7 +80,7 @@ public:
    */
   bool SendExtInfo;
   /* Current configuration of sorting index for object list */
-  enum Sorting {NO_SORT, BY_RANGE, BY_RCS};
+  enum Sorting { NO_SORT, BY_RANGE, BY_RCS };
   /*
    * Selects the sorting index for the object list
    * (ignored for clusters as they are always sorted by range)
@@ -100,17 +93,19 @@ public:
   bool StoreInNVM;
   /* Sets the sensitivity of the cluster detection to standard (0x0) or high sensitivity (0x1) */
   bool UpdateRCS_Threshold;
-  enum RCS_Threshold {NORMAL, HIGH_SENSITIVITY};
+  enum RCS_Threshold { NORMAL, HIGH_SENSITIVITY };
   /* If true, the sensor’s high sensitivity mode is active */
   RCS_Threshold RCS_Status;
-  enum InvalidClustersConfig {DISABLE_INVALID = 0x00,
+  enum InvalidClustersConfig {
+    DISABLE_INVALID = 0x00,
     ENABLE_INVALID = 0x01,
     ENABLE_LOW_RCS_DYNAMIC = 0x02,
     ENABLE_LOW_RCS_STATIC = 0x04,
     ENABLE_INVALID_RANGE = 0x08,
     ENABLE_RANGE_LESS_THAN_1M = 0x10,
     ENABLE_EGO_MIRROR = 0x20,
-    ENABLE_WRAPPED_STATIONARY = 0x20, };
+    ENABLE_WRAPPED_STATIONARY = 0x20,
+  };
   InvalidClustersConfig InvalidClusters;
 };
 
@@ -122,20 +117,19 @@ public:
 class RadarState : public RadarCommand
 {
 public:
-  RadarState()
-  : RadarCommand(ars408::RADAR_STATE) {}
+  RadarState() : RadarCommand(ars408::RADAR_STATE) {}
   std::string ToString()
   {
     std::ostringstream stream;
-    stream << "NvmReadStatus: " << (uint16_t)NvmReadStatus << std::endl <<
-      "NvmWriteStatus: " << (uint16_t)NvmWriteStatus << std::endl <<
-      "MaxDistance: " << (uint16_t)MaxDistance << " m" << std::endl <<
-      "PersistentError: " << (uint16_t)PersistentError << std::endl <<
-      "Interference: " << (uint16_t)Interference << std::endl <<
-      "TemperatureError: " << (uint16_t)TemperatureError << std::endl <<
-      "TemporaryError: " << (uint16_t)TemporaryError << std::endl <<
-      "VoltageError: " << (uint16_t)VoltageError << std::endl <<
-      "SensorID: " << (uint16_t)SensorID << std::endl;
+    stream << "NvmReadStatus: " << (uint16_t)NvmReadStatus << std::endl
+           << "NvmWriteStatus: " << (uint16_t)NvmWriteStatus << std::endl
+           << "MaxDistance: " << (uint16_t)MaxDistance << " m" << std::endl
+           << "PersistentError: " << (uint16_t)PersistentError << std::endl
+           << "Interference: " << (uint16_t)Interference << std::endl
+           << "TemperatureError: " << (uint16_t)TemperatureError << std::endl
+           << "TemporaryError: " << (uint16_t)TemporaryError << std::endl
+           << "VoltageError: " << (uint16_t)VoltageError << std::endl
+           << "SensorID: " << (uint16_t)SensorID << std::endl;
     stream << "SortingMode: ";
     switch (SortingMode) {
       case ars408::RadarState::SortingConfig::NO_SORT:
@@ -147,9 +141,11 @@ public:
       case ars408::RadarState::SortingConfig::BY_RCS:
         stream << "BY_RCS";
         break;
+      case ars408::RadarState::SortingConfig::SORT_ERROR:
+        stream << "SORT_ERROR";
+        break;
     }
-    stream << std::endl <<
-      "PowerMode: ";
+    stream << std::endl << "PowerMode: ";
     switch (PowerMode) {
       case ars408::RadarState::PowerConfig::STANDARD:
         stream << "STANDARD";
@@ -163,9 +159,12 @@ public:
       case ars408::RadarState::PowerConfig::MINUS_9dB_GAIN:
         stream << "MINUS_9dB_GAIN";
         break;
+      case ars408::RadarState::PowerConfig::POWER_ERROR:
+        stream << "POWER_ERROR";
+        break;
     }
-    stream << std::endl <<
-      "CtrlRelay: " << (uint16_t)CtrlRelay << std::endl
+    stream << std::endl
+           << "CtrlRelay: " << (uint16_t)CtrlRelay << std::endl
 
            << "OutputType: ";
     switch (OutputType) {
@@ -178,10 +177,13 @@ public:
       case ars408::RadarState::OutputTypeConfig::CLUSTERS:
         stream << "CLUSTERS";
         break;
+      case ars408::RadarState::OutputTypeConfig::OUTPUT_ERROR:
+        stream << "OUTPUT_ERROR";
+        break;
     }
-    stream << std::endl <<
-      "SendQuality: " << (uint16_t)SendQuality << std::endl <<
-      "SendExtInfo: " << (uint16_t)SendExtInfo << std::endl
+    stream << std::endl
+           << "SendQuality: " << (uint16_t)SendQuality << std::endl
+           << "SendExtInfo: " << (uint16_t)SendExtInfo << std::endl
 
            << "EgoMotionRxStatus: ";
     switch (EgoMotionRxStatus) {
@@ -197,14 +199,16 @@ public:
       case ars408::RadarState::MotionRx::SPEED_YAW_MISSING:
         stream << "SPEED_YAW_MISSING";
         break;
+      case ars408::RadarState::MotionRx::MOTION_ERROR:
+        stream << "MOTION_ERROR";
+        break;
     }
-    stream << std::endl <<
-      "Rcs_Threshold: " << (uint16_t)Rcs_Threshold;
+    stream << std::endl << "Rcs_Threshold: " << (uint16_t)Rcs_Threshold;
 
     return stream.str();
   }
-  enum Status {FAILED, SUCCESS};  /*FAILED, SUCCESS*/
-  enum Config {INACTIVE, ACTIVE};  /*INACTIVE, ACTIVE*/
+  enum Status { FAILED, SUCCESS };  /*FAILED, SUCCESS*/
+  enum Config { INACTIVE, ACTIVE }; /*INACTIVE, ACTIVE*/
 
   /* State of reading the configuration parameters from non-volatile memory at startup */
   bool NvmReadStatus;
@@ -217,7 +221,7 @@ public:
   uint16_t MaxDistance;
   /* An internal error which might not disappear after a reset has been detected. */
   bool PersistentError;
-  bool Interference;        /*Interference with another radar sensor has been detected.*/
+  bool Interference; /*Interference with another radar sensor has been detected.*/
   /* Error will be active if the temperature is below or above the defined range. */
   bool TemperatureError;
   /*
@@ -230,22 +234,22 @@ public:
    * if the operating voltage is below or above the defined range for more than 5 seconds.
    */
   bool VoltageError;
-  uint8_t SensorID;         /*Sensor ID 0 - 7*/
-  enum SortingConfig {NO_SORT, BY_RANGE, BY_RCS, SORT_ERROR};
-  SortingConfig SortingMode;  /*Current configuration of sorting index for object list*/
+  uint8_t SensorID; /*Sensor ID 0 - 7*/
+  enum SortingConfig { NO_SORT, BY_RANGE, BY_RCS, SORT_ERROR };
+  SortingConfig SortingMode; /*Current configuration of sorting index for object list*/
   /* Current configuration of transmitted radar power parameter */
-  enum PowerConfig {STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN, POWER_ERROR};
+  enum PowerConfig { STANDARD, MINUS_3dB_GAIN, MINUS_6dB_GAIN, MINUS_9dB_GAIN, POWER_ERROR };
   PowerConfig PowerMode;
-  Config CtrlRelay;      /*True if relay control message is sent*/
-  enum OutputTypeConfig {NONE, OBJECTS, CLUSTERS, OUTPUT_ERROR};   /*NONE, OBJECTS, CLUSTERS*/
-  OutputTypeConfig OutputType;  /*Currently selected output type as either clusters or objects*/
-  Config SendQuality;    /*True if quality information is sent for clusters or objects*/
-  Config SendExtInfo;    /*True if extended information is sent for objects*/
+  Config CtrlRelay; /*True if relay control message is sent*/
+  enum OutputTypeConfig { NONE, OBJECTS, CLUSTERS, OUTPUT_ERROR }; /*NONE, OBJECTS, CLUSTERS*/
+  OutputTypeConfig OutputType; /*Currently selected output type as either clusters or objects*/
+  Config SendQuality;          /*True if quality information is sent for clusters or objects*/
+  Config SendExtInfo;          /*True if extended information is sent for objects*/
   /* INPUT_OK, SPEED_MISSING, YAW_MISSING, SPEED_YAW_MISSING */
-  enum MotionRx {INPUT_OK, SPEED_MISSING, YAW_MISSING, SPEED_YAW_MISSING, MOTION_ERROR};
-  MotionRx EgoMotionRxStatus;  /*Shows the state of the speed and yaw rate input signals*/
+  enum MotionRx { INPUT_OK, SPEED_MISSING, YAW_MISSING, SPEED_YAW_MISSING, MOTION_ERROR };
+  MotionRx EgoMotionRxStatus; /*Shows the state of the speed and yaw rate input signals*/
   /* If true, the sensor’s high sensitivity mode is active */
-  enum Rcs_ThresholdConfig {NORMAL, HIGH_SENSITIVITY, RCS_ERROR};
+  enum Rcs_ThresholdConfig { NORMAL, HIGH_SENSITIVITY, RCS_ERROR };
   Rcs_ThresholdConfig Rcs_Threshold;
 };
 
@@ -257,12 +261,12 @@ public:
 class FilterCfg : RadarCommand
 {
 public:
-  FilterCfg()
-  : RadarCommand(ars408::FILTER_CFG) {}
-  bool UpdateFilterConfig;  /*Allow change of filter configuration if true*/
-  bool ActivateSelectedFilter;  /*De-/activate filter configuration for specified filter criterion*/
-  enum FilterTypeConfig {NUM_OBJECTS_CO,
-    DISTANCE_CO,  /*Radial distance in m [r = sqrt(x2 + y2)]*/
+  FilterCfg() : RadarCommand(ars408::FILTER_CFG) {}
+  bool UpdateFilterConfig;     /*Allow change of filter configuration if true*/
+  bool ActivateSelectedFilter; /*De-/activate filter configuration for specified filter criterion*/
+  enum FilterTypeConfig {
+    NUM_OBJECTS_CO,
+    DISTANCE_CO, /*Radial distance in m [r = sqrt(x2 + y2)]*/
     AZIMUTH_CO,  /*Azimuth angle in degree [a = arc tan(y/x)]*/
     /*
      * Radial velocity in sensor line-of-sight in m/sec of oncoming clusters or objects
@@ -274,13 +278,13 @@ public:
      * (all oncoming clusters and objects are ok)
      */
     DEPARTING_RADIAL_VELOCITY_CO,
-    RADAR_CROSS_SECTION_CO,  /*RCS value (Radar cross section) in dBm2*/
-    LIFETIME_O,  /*Life time (since first detection) in seconds*/
-    AREA_SIZE_O,  /*Object size as area in m2 (length x width)*/
+    RADAR_CROSS_SECTION_CO, /*RCS value (Radar cross section) in dBm2*/
+    LIFETIME_O,             /*Life time (since first detection) in seconds*/
+    AREA_SIZE_O,            /*Object size as area in m2 (length x width)*/
     /* probability for being a real target and not a sensor artifact caused by multipath */
     EXIST_PROBABILITY_O,
-    POS_Y_O,  /*Y-position in m (lateral distance)*/
-    POS_X_O,  /*X-position in m (longitudinal distance)*/
+    POS_Y_O, /*Y-position in m (lateral distance)*/
+    POS_X_O, /*X-position in m (longitudinal distance)*/
     /*
      * Lateral velocity component in m/sec for right-left moving objects
      * (all left-right moving objects are ok)
@@ -307,44 +311,45 @@ public:
      * Max value is used as a bitfield for the configuration.
      * Bit 0-7 are corresponding to the object classification 0-7. Min value is ignored.
      */
-    CLASS_O, };
+    CLASS_O,
+  };
   FilterTypeConfig FilterType;
   /* Currently selected output type as either clusters or objects */
-  enum OutputTypeConfig {NONE, OBJECTS, CLUSTERS};
+  enum OutputTypeConfig { NONE, OBJECTS, CLUSTERS };
   OutputTypeConfig OutputTypeFilter;
-  uint8_t MinNumberOfObjects;      /*0     4095      1             */
-  float MinDistance;               /*0     409.5     0.1     m     */
-  float MinAzimuth;                /*-50   52.375    0.025   deg   */
-  float MinVelocityOncoming;       /*0     128.993   0.0315  m/s   */
-  float MinVelocityDeparting;      /*0     128.993   0.0315  m/s   */
-  float MinRadarCrossSection;      /*-50   52.375    0.025   dBm2  */
-  float MinLifetime;               /*0     409.5     0.1     s     */
-  float MinAreaSize;               /*0     102.375   0.025   m2*/
-  float MinExistProbability;       /*0     7         1       % {0,25,50,75,90,99,99.9,100}*/
-  float MinPosY;                   /*-409.5 409.5    0.2     m     */
-  float MinPosX;                   /*-500  1138.2    0.2     m     */
-  float MinVelYRightLeft;          /*0     128.993   0.0315  m/s   */
-  float MinVelXOncoming;           /*0     128.993   0.0315  m/s   */
-  float MinVelYLeftRight;          /*0     128.993   0.0315  m/s   */
-  float MinVelXDeparting;          /*0     128.993   0.0315  m/s   */
-  uint8_t MinClass;                /*0     4095      1             */
+  uint8_t MinNumberOfObjects; /*0     4095      1             */
+  float MinDistance;          /*0     409.5     0.1     m     */
+  float MinAzimuth;           /*-50   52.375    0.025   deg   */
+  float MinVelocityOncoming;  /*0     128.993   0.0315  m/s   */
+  float MinVelocityDeparting; /*0     128.993   0.0315  m/s   */
+  float MinRadarCrossSection; /*-50   52.375    0.025   dBm2  */
+  float MinLifetime;          /*0     409.5     0.1     s     */
+  float MinAreaSize;          /*0     102.375   0.025   m2*/
+  float MinExistProbability;  /*0     7         1       % {0,25,50,75,90,99,99.9,100}*/
+  float MinPosY;              /*-409.5 409.5    0.2     m     */
+  float MinPosX;              /*-500  1138.2    0.2     m     */
+  float MinVelYRightLeft;     /*0     128.993   0.0315  m/s   */
+  float MinVelXOncoming;      /*0     128.993   0.0315  m/s   */
+  float MinVelYLeftRight;     /*0     128.993   0.0315  m/s   */
+  float MinVelXDeparting;     /*0     128.993   0.0315  m/s   */
+  uint8_t MinClass;           /*0     4095      1             */
 
-  uint8_t MaxNumberOfObjects;      /*0     4095      1             */
-  float MaxDistance;               /*0     409.5     0.1     m     */
-  float MaxAzimuth;                /*-50   52.375    0.025   deg   */
-  float MaxVelocityOncoming;       /*0     128.993   0.0315  m/s   */
-  float MaxVelocityDeparting;      /*0     128.993   0.0315  m/s   */
-  float MaxRadarCrossSection;      /*-50   52.375    0.025   dBm2  */
-  float MaxLifetime;               /*0     409.5     0.1     s     */
-  float MaxAreaSize;               /*0     102.375   0.025   m2*/
-  float MaxExistProbability;       /*0     7         1       % {0,25,50,75,90,99,99.9,100}*/
-  float MaxPosY;                   /*-409.5 409.5    0.2     m     */
-  float MaxPosX;                   /*-500  1138.2    0.2     m     */
-  float MaxVelYRightLeft;          /*0     128.993   0.0315  m/s   */
-  float MaxVelXOncoming;           /*0     128.993   0.0315  m/s   */
-  float MaxVelYLeftRight;          /*0     128.993   0.0315  m/s   */
-  float MaxVelXDeparting;          /*0     128.993   0.0315  m/s   */
-  uint8_t MaxClass;                /*0     4095      1             */
+  uint8_t MaxNumberOfObjects; /*0     4095      1             */
+  float MaxDistance;          /*0     409.5     0.1     m     */
+  float MaxAzimuth;           /*-50   52.375    0.025   deg   */
+  float MaxVelocityOncoming;  /*0     128.993   0.0315  m/s   */
+  float MaxVelocityDeparting; /*0     128.993   0.0315  m/s   */
+  float MaxRadarCrossSection; /*-50   52.375    0.025   dBm2  */
+  float MaxLifetime;          /*0     409.5     0.1     s     */
+  float MaxAreaSize;          /*0     102.375   0.025   m2*/
+  float MaxExistProbability;  /*0     7         1       % {0,25,50,75,90,99,99.9,100}*/
+  float MaxPosY;              /*-409.5 409.5    0.2     m     */
+  float MaxPosX;              /*-500  1138.2    0.2     m     */
+  float MaxVelYRightLeft;     /*0     128.993   0.0315  m/s   */
+  float MaxVelXOncoming;      /*0     128.993   0.0315  m/s   */
+  float MaxVelYLeftRight;     /*0     128.993   0.0315  m/s   */
+  float MaxVelXDeparting;     /*0     128.993   0.0315  m/s   */
+  uint8_t MaxClass;           /*0     4095      1             */
 };
 
 /*
@@ -355,8 +360,7 @@ public:
 class FilterState_Header : RadarCommand
 {
 public:
-  FilterState_Header()
-  : RadarCommand(ars408::FILTER_STATE_HEADER) {}
+  FilterState_Header() : RadarCommand(ars408::FILTER_STATE_HEADER) {}
 };
 
 /*
@@ -367,8 +371,7 @@ public:
 class FilterState_Cfg : RadarCommand
 {
 public:
-  FilterState_Cfg()
-  : RadarCommand(ars408::FILER_STATE_CFG) {}
+  FilterState_Cfg() : RadarCommand(ars408::FILER_STATE_CFG) {}
   const int CAN_ID = 0x204;
 };
 
@@ -380,8 +383,7 @@ public:
 class CollDetCfg : RadarCommand
 {
 public:
-  CollDetCfg()
-  : RadarCommand(ars408::COLL_DET_CFG) {}
+  CollDetCfg() : RadarCommand(ars408::COLL_DET_CFG) {}
 };
 
 /*
@@ -392,8 +394,7 @@ public:
 class CollDetRegionCfg : RadarCommand
 {
 public:
-  CollDetRegionCfg()
-  : RadarCommand(ars408::COLL_DET_REGION_CFG) {}
+  CollDetRegionCfg() : RadarCommand(ars408::COLL_DET_REGION_CFG) {}
 };
 
 /*
@@ -404,8 +405,7 @@ public:
 class CollDetState : RadarCommand
 {
 public:
-  CollDetState()
-  : RadarCommand(ars408::COLL_DET_STATE) {}
+  CollDetState() : RadarCommand(ars408::COLL_DET_STATE) {}
 };
 
 /*
@@ -416,8 +416,7 @@ public:
 class CollDetRegionState : RadarCommand
 {
 public:
-  CollDetRegionState()
-  : RadarCommand(ars408::COLL_DET_REGION_STATE) {}
+  CollDetRegionState() : RadarCommand(ars408::COLL_DET_REGION_STATE) {}
 };
 
 /*
@@ -428,13 +427,12 @@ public:
 class SpeedInformation : RadarCommand
 {
 public:
-  SpeedInformation()
-  : RadarCommand(ars408::SPEED_INFORMATION) {}
+  SpeedInformation() : RadarCommand(ars408::SPEED_INFORMATION) {}
   /*
    * Indicates the direction of the radar movement
    * while looking into positive straight ahead direction
    */
-  enum SpeedDirection {STATIC, MOVING_FORWARD, MOVING_BACKWARDS};
+  enum SpeedDirection { STATIC, MOVING_FORWARD, MOVING_BACKWARDS };
   /* 0      163.8      0.02    m/s */
   /*
    * Absolute magnitude of speed in the direction the radar is moved
@@ -451,8 +449,7 @@ public:
 class YawRateInformation : RadarCommand
 {
 public:
-  YawRateInformation()
-  : RadarCommand(ars408::YAW_RATE_INFORMATION) {}
+  YawRateInformation() : RadarCommand(ars408::YAW_RATE_INFORMATION) {}
   /* -327.68 327.68    0.01    deg/s */
   /*
    * Rate of change of angular velocity looking into positive straight ahead direction.
@@ -469,8 +466,7 @@ public:
 class Cluster_0_Status : RadarCommand
 {
 public:
-  Cluster_0_Status()
-  : RadarCommand(ars408::CLUSTER_STATUS) {}
+  Cluster_0_Status() : RadarCommand(ars408::CLUSTER_STATUS) {}
 };
 
 /*
@@ -481,8 +477,7 @@ public:
 class Cluster_1_General : RadarCommand
 {
 public:
-  Cluster_1_General()
-  : RadarCommand(ars408::CLUSTER_GENERAL) {}
+  Cluster_1_General() : RadarCommand(ars408::CLUSTER_GENERAL) {}
 };
 
 /*
@@ -493,8 +488,7 @@ public:
 class Cluster_2_Quality : RadarCommand
 {
 public:
-  Cluster_2_Quality()
-  : RadarCommand(ars408::CLUSTER_QUALITY) {}
+  Cluster_2_Quality() : RadarCommand(ars408::CLUSTER_QUALITY) {}
 };
 
 /*
@@ -506,23 +500,22 @@ public:
 class Obj_0_Status : RadarCommand
 {
 public:
-  Obj_0_Status()
-  : RadarCommand(ars408::OBJ_STATUS) {}
+  Obj_0_Status() : RadarCommand(ars408::OBJ_STATUS) {}
   std::string ToString()
   {
     std::ostringstream stream;
-    stream << "NumberOfObjects: " << (uint16_t)NumberOfObjects <<
-      ", MeasurementCounter: " << (unsigned int)MeasurementCounter <<
-      ", InterfaceVersion: " << (uint16_t)InterfaceVersion << std::endl;
+    stream << "NumberOfObjects: " << (uint16_t)NumberOfObjects
+           << ", MeasurementCounter: " << (unsigned int)MeasurementCounter
+           << ", InterfaceVersion: " << (uint16_t)InterfaceVersion << std::endl;
     return stream.str();
   }
-  uint8_t NumberOfObjects;    /*Number of objects (max. 100 Objects)*/
+  uint8_t NumberOfObjects; /*Number of objects (max. 100 Objects)*/
   /*
    * Measurement cycle counter
    * (counting up since startup of sensor and restarting at 0 when > 65535)
    */
   uint16_t MeasurementCounter;
-  uint8_t InterfaceVersion;   /*Object list CAN interface version*/
+  uint8_t InterfaceVersion; /*Object list CAN interface version*/
 };
 
 /*
@@ -535,8 +528,7 @@ public:
 class Obj_1_General : RadarCommand
 {
 public:
-  Obj_1_General()
-  : RadarCommand(ars408::OBJ_GENERAL) {}
+  Obj_1_General() : RadarCommand(ars408::OBJ_GENERAL) {}
 
   /* 0       255       1 */
   /*
@@ -556,8 +548,15 @@ public:
   /* -64.00  63.75     0.25  m/s */
   /* Relative velocity in lateral direction (y) */
   float RelativeLateralVelocityY;
-  enum DynamicProperty {MOVING, STATIONARY, ONCOMING, CROSSING_LEFT, CROSSING_RIGHT, UNKNOWN,
-    STOPPED};
+  enum DynamicProperty {
+    MOVING,
+    STATIONARY,
+    ONCOMING,
+    CROSSING_LEFT,
+    CROSSING_RIGHT,
+    UNKNOWN,
+    STOPPED
+  };
   /*
    * Dynamic property of the object indicating if the object is moving or stationary
    * (this value can only be determined correctly if the speed and yaw rate is given correctly)
@@ -586,9 +585,8 @@ public:
   float RelativeLateralVelocityYRms;
   float RelativeLongitudinalAccelerationXRms;
   float RelativeLateralAccelerationYRms;
-  float ExistenceProbability;  /*Probability of existence*/
-  Obj_2_Quality()
-  : RadarCommand(ars408::OBJ_QUALITY) {}
+  float ExistenceProbability; /*Probability of existence*/
+  Obj_2_Quality() : RadarCommand(ars408::OBJ_QUALITY) {}
 };
 
 /*
@@ -602,8 +600,7 @@ public:
 class Obj_3_Extended : RadarCommand
 {
 public:
-  Obj_3_Extended()
-  : RadarCommand(ars408::OBJ_EXTENDED) {}
+  Obj_3_Extended() : RadarCommand(ars408::OBJ_EXTENDED) {}
   /* 0       255       1 */
   /*
    * Object ID
@@ -617,12 +614,20 @@ public:
   /*-2.50 2.61 0.01 m/s2 */
   /* Relative acceleration in lateral direction */
   float RelativeLateralAccelerationY;
-  enum ObjectClassProperty {POINT, CAR, TRUCK, RESERVED_01, MOTORCYCLE, BICYCLE, WIDE,
-    RESERVED_02};
-  ObjectClassProperty ObjectClass;  /*Class of the object*/
-  float OrientationAngle;  /*-180  180 0.4 degOrientation angle of the object in degrees */
-  float Length;  /*0.0 51.0 0.2 m Length of the tracked object*/
-  float Width;  /*0.0 51.0 0.2 m  Length of the tracked object*/
+  enum ObjectClassProperty {
+    POINT,
+    CAR,
+    TRUCK,
+    RESERVED_01,
+    MOTORCYCLE,
+    BICYCLE,
+    WIDE,
+    RESERVED_02
+  };
+  ObjectClassProperty ObjectClass; /*Class of the object*/
+  float OrientationAngle;          /*-180  180 0.4 degOrientation angle of the object in degrees */
+  float Length;                    /*0.0 51.0 0.2 m Length of the tracked object*/
+  float Width;                     /*0.0 51.0 0.2 m  Length of the tracked object*/
 };
 
 /*
@@ -637,8 +642,7 @@ public:
 class Obj_4_Warning : RadarCommand
 {
 public:
-  Obj_4_Warning()
-  : RadarCommand(ars408::OBJ_WARNING) {}
+  Obj_4_Warning() : RadarCommand(ars408::OBJ_WARNING) {}
 };
 
 /*
@@ -649,8 +653,7 @@ public:
 class VersionID : RadarCommand
 {
 public:
-  VersionID()
-  : RadarCommand(ars408::VERSION_ID) {}
+  VersionID() : RadarCommand(ars408::VERSION_ID) {}
 };
 
 /*
@@ -665,8 +668,7 @@ public:
 class CollDetRelayCtrl : RadarCommand
 {
 public:
-  CollDetRelayCtrl()
-  : RadarCommand(ars408::COLL_DET_RELAY_CTRL) {}
+  CollDetRelayCtrl() : RadarCommand(ars408::COLL_DET_RELAY_CTRL) {}
 };
 }  // namespace ars408
 

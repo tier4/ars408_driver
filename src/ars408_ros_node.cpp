@@ -78,6 +78,8 @@ radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTr
   out_object.size.z = 1.0;
 
   out_object.classification = ConvertRadarClassToAwSemanticClass(in_object.object_class);
+
+  return out_object;
 }
 
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
