@@ -2,12 +2,14 @@
 <package format="3">
   <name>pe_ars408_ros</name>
   <version>1.0.0</version>
-  <description>Continental ARS408-21 Driver</description>
+  <description>Continental ARS408-21 ROS2 Driver</description>
   <maintainer email="abraham.monrroy@tier4.jp">Abraham Monrroy</maintainer>
-  <license>Private</license>
+  <maintainer email="satoshi.tanaka@tier4.jp"> Satoshi Tanaka</maintainer>
+  <license>Apache License</license>
+
+  <author email="abraham.monrroy@tier4.jp">Abraham Monrroy</author>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <depend>autoware_auto_perception_msgs</depend>
   <depend>can_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
