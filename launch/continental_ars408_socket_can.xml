@@ -3,7 +3,6 @@
   <arg name="receiver_interval_sec" default="0.01" />
   <arg name="input/frame" default="from_can_bus" />
   <arg name="output/objects" default="objects" />
-  <arg name="topic_type" default="RadarTrack" description="choose among RadarTrack, TrackedObject, and DetectedObject"/>
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py">
     <arg name="interface" value="$(var interface)" />
@@ -13,6 +12,5 @@
   <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
     <arg name="input/frame" value="$(var input/frame)" />
     <arg name="output/objects" value="$(var output/objects)" />
-    <arg name="topic_type" value="$(var topic_type)"/>
   </include>
 </launch>

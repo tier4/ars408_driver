@@ -1,11 +1,9 @@
 <launch>
   <arg name="input/frame" default="from_can_bus" />
   <arg name="output/objects" default="objects" />
-  <arg name="topic_type" default="RadarTrack" description="choose among RadarTrack, TrackedObject, and DetectedObject"/>
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />
     <remap from="~/output/objects" to="$(var output/objects)" />
-    <arg name="topic_type" value="$(var topic_type)"/>
   </node>
 </launch>
