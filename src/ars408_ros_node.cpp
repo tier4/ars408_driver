@@ -14,13 +14,14 @@
 
 #include "ars408_ros/ars408_ros_node.hpp"
 
+#include <rclcpp/rclcpp.hpp>
+
 #include <string>
 #include <unordered_map>
 
 PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
 : Node("ars408_node", node_options)
 {
-  topic_type_ = declare_parameter("topic_type", "RadarTrack");
   GenerateUUIDTable();
   Run();
 }
@@ -94,8 +95,8 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   for (const auto & object : detected_objects) {
     radar_msgs::msg::RadarTrack object_ = ConvertRadarObjectToRadarTrack(object.second);
     output_objects.tracks.emplace_back(object_);
-    publisher_radar_tracks_->publish(output_objects);
   }
+  publisher_radar_tracks_->publish(output_objects);
 }
 
 unique_identifier_msgs::msg::UUID PeContinentalArs408Node::GenerateRandomUUID()

@@ -3,7 +3,6 @@
   <arg name="output/objects" default="objects" />
   <arg name="kvaser_hardware_id" default="12345" />
   <arg name="kvaser_circuit_id" default="0" />
-  <arg name="launch_driver" default="true" />
 
   <include file="$(find-pkg-share kvaser_interface)/launch/kvaser_bridge.launch.xml">
     <arg name="hardware_id" value="$(var kvaser_hardware_id)" />
@@ -14,6 +13,5 @@
   <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
     <arg name="input/frame" value="$(var input/frame)" />
     <arg name="output/objects" value="$(var output/objects)" />
-    <arg name="launch_driver" value="$(var launch_driver)" />
   </include>
 </launch>
