@@ -70,6 +70,7 @@ radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTr
 
   out_object.velocity.x = in_object.speed_long_x;
   out_object.velocity.y = in_object.speed_lat_y;
+  out_object.velocity_covariance.at(0) = 0.1;
 
   out_object.acceleration.x = in_object.rel_acceleration_long_x;
   out_object.acceleration.y = in_object.rel_acceleration_lat_y;
