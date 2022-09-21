@@ -38,13 +38,23 @@ roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 ## Design
 ### Input
 
-- `can_msgs` <https://github.com/ros-industrial/ros_canopen/tree/melodic-devel/can_msgs>
+- `input/frame`
+  - `can_msgs` <https://github.com/ros-industrial/ros_canopen/tree/melodic-devel/can_msgs>
 
 ### Output
 
-- Select by parameter
+- `output/objects`
   - `RadarTrack`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTrack.msg>
+  - If you want to visualize, you should choose `RadarTrack` and visualize in rviz using [radar_tracks_msgs_converter](https://github.com/autowarefoundation/autoware.universe/tree/main/perception/radar_tracks_msgs_converter) with autoware.universe.
+- `output/return`
   - `RadarReturn`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarReturn.msg>
+
+### parameters
+
+- `publish_radar_track`
+  - The bool parameter to publish `RadarTrack` topic
+- `publish_radar_return`
+  - The bool parameter to publish `RadarTrack` topic
 
 ## Launch
 ### continental_ars408.xml
@@ -54,15 +64,6 @@ roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 - The launch file will initiate two nodes:
   1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
   1. Continental ARS408 driver will read the `can_raw`, parse and publish `RadarTrack` or `RadarReturn`
-- Parameters
-  - `can_device`
-      - Device name of the can interface
-      - Default is `can0`
-  - `can_topic`
-      - Topic on which socketcan will publish the can raw msg
-      - Default is `can_raw`
-  - `publish_mode`
-- If you want to visualize, you should choose `RadarTrack` and visualize in rviz using [radar_tracks_msgs_converter](https://github.com/autowarefoundation/autoware.universe/tree/main/perception/radar_tracks_msgs_converter) with autoware.universe.
 
 ## Reference
 
