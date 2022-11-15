@@ -1,9 +1,15 @@
 <launch>
-  <arg name="input/frame" default="from_can_bus" />
+  <arg name="input/frame" default="/pacmod/radar/can_tx" />
   <arg name="output/objects" default="objects" />
+  <arg name="output/scan" default="scan" />
+  <arg name="publish_radar_track" default="true" />
+  <arg name="publish_radar_scan" default="false" />
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />
     <remap from="~/output/objects" to="$(var output/objects)" />
+    <remap from="~/output/scan" to="$(var output/scan)" />
+    <param name="publish_radar_track" value="$(var publish_radar_track)" />
+    <param name="publish_radar_scan" value="$(var publish_radar_scan)" />
   </node>
 </launch>
