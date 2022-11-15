@@ -34,6 +34,7 @@ class PeContinentalArs408Node : public rclcpp::Node
   rclcpp::Publisher<radar_msgs::msg::RadarTracks>::SharedPtr publisher_radar_tracks_;
 
   std::string output_frame_;
+  can_msgs::msg::Frame::ConstSharedPtr can_data_;
 
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
