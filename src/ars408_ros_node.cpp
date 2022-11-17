@@ -29,6 +29,7 @@ PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & nod
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
 {
   if (!can_msg->data.empty()) {
+    can_data_ = can_msg;
     ars408_driver_.Parse(can_msg->id, can_msg->data, can_msg->dlc);
   }
 }
@@ -89,9 +90,7 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
 {
   radar_msgs::msg::RadarTracks output_objects;
   output_objects.header.frame_id = output_frame_;
-
-  rclcpp::Time current_time = this->get_clock()->now();
-  output_objects.header.stamp = current_time;
+  output_objects.header.stamp = can_data_->header.stamp;
 
   for (const auto & object : detected_objects) {
     radar_msgs::msg::RadarTrack object_ = ConvertRadarObjectToRadarTrack(object.second);
