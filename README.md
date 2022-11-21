@@ -52,9 +52,9 @@ roslaunch pe_ars408_ros continental_ars408_socket_can.launch
 ### parameters
 
 - `publish_radar_track`
-  - The bool parameter to publish `RadarTrack` topic
+  - The bool parameter to publish `output/objects` topic
 - `publish_radar_return`
-  - The bool parameter to publish `RadarTrack` topic
+  - The bool parameter to publish `output/return` topic
 
 ## Launch
 ### continental_ars408.xml
