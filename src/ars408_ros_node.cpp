@@ -93,7 +93,7 @@ radar_msgs::msg::RadarReturn PeContinentalArs408Node::ConvertRadarObjectToRadarR
     in_object.distance_long_x * in_object.distance_long_x +
     in_object.distance_lat_y * in_object.distance_lat_y);
   radar_return.azimuth = std::atan2(in_object.distance_lat_y, in_object.distance_long_x);
-  radar_return.doppler_velocity = in_object.rel_acceleration_long_x;
+  radar_return.doppler_velocity = in_object.speed_long_x;
   radar_return.elevation = 0.0;
   radar_return.amplitude = 0.0;
   return radar_return;
