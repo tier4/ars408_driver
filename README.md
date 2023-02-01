@@ -32,7 +32,7 @@ cansend can0 200#F8000000089C0000
 5. Launch the driver
 
 ```sh
-roslaunch pe_ars408_ros continental_ars408_socket_can.launch
+ros2 launch continental_ars408_socket_can.launch.xml
 ```
 
 ## Design
