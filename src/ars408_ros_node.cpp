@@ -85,6 +85,20 @@ radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTr
   return out_object;
 }
 
+radar_msgs::msg::RadarReturn PeContinentalArs408Node::ConvertRadarObjectToRadarReturn(
+  const ars408::RadarObject & in_object)
+{
+  radar_msgs::msg::RadarReturn radar_return;
+  radar_return.range = std::sqrt(
+    in_object.distance_long_x * in_object.distance_long_x +
+    in_object.distance_lat_y * in_object.distance_lat_y);
+  radar_return.azimuth = std::atan2(in_object.distance_lat_y, in_object.distance_long_x);
+  radar_return.doppler_velocity = in_object.speed_long_x / std::cos(radar_return.azimuth);
+  radar_return.elevation = 0.0;
+  radar_return.amplitude = 0.0;
+  return radar_return;
+}
+
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects)
 {
@@ -92,11 +106,25 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   output_objects.header.frame_id = output_frame_;
   output_objects.header.stamp = can_data_->header.stamp;
 
+  radar_msgs::msg::RadarScan output_scan;
+  output_scan.header.frame_id = output_frame_;
+  output_scan.header.stamp = can_data_->header.stamp;
+
   for (const auto & object : detected_objects) {
-    radar_msgs::msg::RadarTrack object_ = ConvertRadarObjectToRadarTrack(object.second);
-    output_objects.tracks.emplace_back(object_);
+    if (publish_radar_track_) {
+      output_objects.tracks.emplace_back(ConvertRadarObjectToRadarTrack(object.second));
+    };
+    if (publish_radar_scan_) {
+      output_scan.returns.emplace_back(ConvertRadarObjectToRadarReturn(object.second));
+    }
   }
-  publisher_radar_tracks_->publish(output_objects);
+
+  if (publish_radar_track_) {
+    publisher_radar_tracks_->publish(output_objects);
+  }
+  if (publish_radar_scan_) {
+    publisher_radar_scan_->publish(output_scan);
+  }
 }
 
 unique_identifier_msgs::msg::UUID PeContinentalArs408Node::GenerateRandomUUID()
@@ -118,6 +146,8 @@ void PeContinentalArs408Node::GenerateUUIDTable()
 void PeContinentalArs408Node::Run()
 {
   output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
+  publish_radar_track_ = this->declare_parameter<bool>("publish_radar_track", true);
+  publish_radar_scan_ = this->declare_parameter<bool>("publish_radar_scan", false);
 
   ars408_driver_.RegisterDetectedObjectsCallback(
     std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1));
@@ -128,6 +158,7 @@ void PeContinentalArs408Node::Run()
 
   publisher_radar_tracks_ =
     this->create_publisher<radar_msgs::msg::RadarTracks>("~/output/objects", 10);
+  publisher_radar_scan_ = this->create_publisher<radar_msgs::msg::RadarScan>("~/output/scan", 10);
 }
 
 #include "rclcpp_components/register_node_macro.hpp"

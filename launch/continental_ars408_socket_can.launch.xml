@@ -1,5 +1,4 @@
 <launch>
-  <arg name="input/frame" default="from_can_bus" />
   <arg name="output/objects" default="objects" />
   <arg name="interface" default="can0" />
   <arg name="receiver_interval_sec" default="0.01" />
@@ -11,7 +10,7 @@
   </include>
 
   <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
-    <arg name="input/frame" value="$(var input/frame)" />
+    <arg name="input/frame" value="from_can_bus" />
     <arg name="output/objects" value="$(var output/objects)" />
   </include>
 </launch>
