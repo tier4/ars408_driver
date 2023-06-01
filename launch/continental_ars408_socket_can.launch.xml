@@ -8,11 +8,12 @@
 
   <!-- ARS408 driver param -->
   <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <arg name="output/objects" default="objects" />
+  <arg name="output/objects" default="objects_raw" />
   <arg name="output/scan" default="scan" />
   <arg name="publish_radar_track" default="true" />
   <arg name="publish_radar_scan" default="false" />
   <arg name="output_frame" default="ars408" />
+  <arg name="sequential_publish" default="false" />
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
     <arg name="interface" value="$(var interface)" />
@@ -26,5 +27,6 @@
     <arg name="publish_radar_track" value="$(var publish_radar_track)" />
     <arg name="publish_radar_scan" value="$(var publish_radar_scan)" />
     <arg name="output_frame" value="$(var output_frame)" />
+    <arg name="sequential_publish" default="$(var sequential_publish)" />
   </include>
 </launch>

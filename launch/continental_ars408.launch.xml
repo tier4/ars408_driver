@@ -1,10 +1,11 @@
 <launch>
   <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <arg name="output/objects" default="objects" />
+  <arg name="output/objects" default="objects_raw" />
   <arg name="output/scan" default="scan" />
   <arg name="publish_radar_track" default="true" />
   <arg name="publish_radar_scan" default="false" />
   <arg name="output_frame" default="ars408" />
+  <arg name="sequential_publish" default="false" />
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />
@@ -13,5 +14,6 @@
     <param name="publish_radar_track" value="$(var publish_radar_track)" />
     <param name="publish_radar_scan" value="$(var publish_radar_scan)" />
     <param name="output_frame" value="$(var output_frame)" />
+    <param name="sequential_publish" value="$(var sequential_publish)" />
   </node>
 </launch>
