@@ -1,7 +1,9 @@
 <launch>
+  <!-- interface -->
   <arg name="input/frame" default="/sensing/radar/can_tx" />
   <arg name="output/objects" default="objects_raw" />
   <arg name="output/scan" default="scan" />
+  <!-- parameter -->
   <arg name="publish_radar_track" default="true" />
   <arg name="publish_radar_scan" default="false" />
   <arg name="output_frame" default="ars408" />
