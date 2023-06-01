@@ -55,15 +55,21 @@ ros2 launch continental_ars408_socket_can.launch.xml
   - The bool parameter to publish `output/objects` topic
 - `publish_radar_return`
   - The bool parameter to publish `output/return` topic
+- `output_frame`
+  - The string parameter of the output frame id
+- `sequential_publish`
+  - The bool parameter to publish outputs sequentially.
+  - If this parameter is false (default parameter), the driver publish output after receiving all 1 cycle sequential data from can data topic.
+  - If this parameter is true, the driver publish output  every time receiving from can data topic.
 
-## Launch
-### continental_ars408.xml
+### launcher
 
-### continental_ars408_socket_can.xml
-
-- The launch file will initiate two nodes:
-  1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
-  1. Continental ARS408 driver will read the `can_raw`, parse and publish `RadarTrack` or `RadarReturn`
+- continental_ars408.xml
+  - Base launcher
+- continental_ars408_socket_can.xml
+  - The launch file will initiate two nodes:
+    1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
+    1. Continental ARS408 driver will read the `can_raw`, parse and publish `RadarTrack` or `RadarReturn`
 
 ## Reference
 
