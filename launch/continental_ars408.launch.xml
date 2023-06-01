@@ -1,5 +1,5 @@
 <launch>
-  <arg name="input/frame" default="/pacmod/radar/can_tx" />
+  <arg name="input/frame" default="/sensing/radar/can_tx" />
   <arg name="output/objects" default="objects" />
   <arg name="output/scan" default="scan" />
   <arg name="publish_radar_track" default="true" />
