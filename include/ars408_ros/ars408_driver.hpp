@@ -152,7 +152,7 @@ public:
   void RegisterDetectedObjectsCallback(
     std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
     bool sequential_publish);
-
+};
 }  // namespace ars408
 
 #endif  // ARS408_ROS__ARS408_DRIVER_HPP_

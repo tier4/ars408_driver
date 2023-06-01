@@ -371,7 +371,7 @@ std::string Ars408Driver::Parse(
                               /// i.e. the number of objects that are sent afterwards
       if (ars408::OBJ_STATUS_BYTES == in_data_length) {
         // ars408::Obj_0_Status object_status = ParseObject0_Status(in_can_data);
-        if (DetectedObjectsReady()) {
+        if (DetectedObjectsReady() && !sequential_publish_) {
           CallDetectedObjectsCallback(radar_objects_);
         }
         ClearRadarObjects();
@@ -396,9 +396,10 @@ std::string Ars408Driver::Parse(
       }
       break;
   }
-  // if (DetectedObjectsReady()) {
-  //   CallDetectedObjectsCallback(radar_objects_);
-  // }
+
+  if (DetectedObjectsReady() && sequential_publish_) {
+    CallDetectedObjectsCallback(radar_objects_);
+  }
 
   return "";
 }

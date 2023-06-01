@@ -148,9 +148,11 @@ void PeContinentalArs408Node::Run()
   output_frame_ = this->declare_parameter<std::string>("output_frame", "ars408");
   publish_radar_track_ = this->declare_parameter<bool>("publish_radar_track", true);
   publish_radar_scan_ = this->declare_parameter<bool>("publish_radar_scan", false);
+  sequential_publish_ = this->declare_parameter<bool>("sequential_publish", false);
 
   ars408_driver_.RegisterDetectedObjectsCallback(
-    std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1));
+    std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1),
+    sequential_publish_);
 
   subscription_ = this->create_subscription<can_msgs::msg::Frame>(
     "~/input/frame", 10,
