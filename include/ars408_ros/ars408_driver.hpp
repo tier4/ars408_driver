@@ -15,15 +15,15 @@
 #ifndef ARS408_ROS__ARS408_DRIVER_HPP_
 #define ARS408_ROS__ARS408_DRIVER_HPP_
 
+#include "ars408_ros/ars408_commands.hpp"
+#include "ars408_ros/ars408_constants.hpp"
+#include "ars408_ros/ars408_object.hpp"
+
 #include <functional>
 #include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "ars408_ros/ars408_constants.hpp"
-#include "ars408_ros/ars408_commands.hpp"
-#include "ars408_ros/ars408_object.hpp"
 
 namespace ars408
 {
@@ -31,6 +31,7 @@ class Ars408Driver
 {
 private:
   bool valid_radar_state_;
+  bool sequential_publish_;
   ars408::RadarState current_radar_state_;
   ars408::Obj_0_Status current_objects_status_;
   ars408::Obj_1_General objects_general_;
@@ -40,9 +41,8 @@ private:
   std::unordered_map<uint8_t, ars408::RadarObject> radar_objects_;
   uint8_t updated_objects_general_, updated_objects_quality_, updated_objects_ext_;
 
-  std::function<
-    void(const std::unordered_map<uint8_t,
-    ars408::RadarObject> &)> detected_objects_callback_;
+  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)>
+    detected_objects_callback_;
 
   /**
    * Adds a RadarObject to the pool of objects
@@ -55,8 +55,7 @@ private:
    * @param in_detected_objects
    */
   void CallDetectedObjectsCallback(
-    std::unordered_map<uint8_t,
-    ars408::RadarObject> & in_detected_objects);
+    std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects);
 
   /**
    * Checks whether all the detected objects have been received and parsed.
@@ -81,28 +80,26 @@ private:
    * @param in_object_id Id of the object to update
    * @param in_object_ext_info extended information object to apply to the object
    */
-  void UpdateObjectExtInfo(
-    uint8_t in_object_id,
-    const ars408::Obj_3_Extended & in_object_ext_info);
+  void UpdateObjectExtInfo(uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info);
 
   /**
-  * Parses RadarState CAN 0x201 and stores internally current status (current_state_)
-  * @param in_can_data std::array<uint8_t, 8> containing the CAN message
-  */
+   * Parses RadarState CAN 0x201 and stores internally current status (current_state_)
+   * @param in_can_data std::array<uint8_t, 8> containing the CAN message
+   */
   void ParseRadarState(const std::array<uint8_t, 8> & in_can_data);
 
   /**
-  * Parses Object0_Status CAN 0x60A
-  * @param in_can_data std::array<uint8_t, 8>
-  * @return object filled with the current number of objects
-  */
+   * Parses Object0_Status CAN 0x60A
+   * @param in_can_data std::array<uint8_t, 8>
+   * @return object filled with the current number of objects
+   */
   ars408::Obj_0_Status ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data);
 
   /**
-  * Parses Object1_General CAN 0x60B
-  * @param in_can_data std::array<uint8_t, 8> containing the CAN message
-  * @return object filled with the details about one object
-  */
+   * Parses Object1_General CAN 0x60B
+   * @param in_can_data std::array<uint8_t, 8> containing the CAN message
+   * @return object filled with the details about one object
+   */
   ars408::RadarObject ParseObject1_General(const std::array<uint8_t, 8> & in_can_data);
 
   /**
@@ -132,8 +129,8 @@ public:
     const uint8_t & in_data_length);
 
   /**
-   * Returns true if the RadarState has been received, if true it fills current_state with the valid state.
-   * If invalid, current_state is empty.
+   * Returns true if the RadarState has been received, if true it fills current_state with the valid
+   * state. If invalid, current_state is empty.
    * @param out_current_state
    * @return True if the RadarState has been received.
    */
@@ -149,11 +146,13 @@ public:
   /**
    * Register the function to be called once all the Radar objects are ready.
    * @param objects_callback pointer to callback function
+   * @param sequential_publish parameter of publish mode
    */
+
   void RegisterDetectedObjectsCallback(
-    std::function<void(const std::unordered_map<uint8_t,
-    ars408::RadarObject> &)> objects_callback);
-};
+    std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
+    bool sequential_publish);
+
 }  // namespace ars408
 
 #endif  // ARS408_ROS__ARS408_DRIVER_HPP_

@@ -14,6 +14,8 @@
 
 #include "ars408_ros/ars408_driver.hpp"
 
+#include <rclcpp/rclcpp.hpp>
+
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -112,9 +114,11 @@ bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state)
 }
 
 void Ars408Driver::RegisterDetectedObjectsCallback(
-  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback)
+  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
+  bool sequential_publish)
 {
   detected_objects_callback_ = objects_callback;
+  sequential_publish_ = sequential_publish;
 }
 
 void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8> & in_can_data)
@@ -367,6 +371,9 @@ std::string Ars408Driver::Parse(
                               /// i.e. the number of objects that are sent afterwards
       if (ars408::OBJ_STATUS_BYTES == in_data_length) {
         // ars408::Obj_0_Status object_status = ParseObject0_Status(in_can_data);
+        if (DetectedObjectsReady()) {
+          CallDetectedObjectsCallback(radar_objects_);
+        }
         ClearRadarObjects();
       }
       break;
@@ -389,9 +396,9 @@ std::string Ars408Driver::Parse(
       }
       break;
   }
-  if (DetectedObjectsReady()) {
-    CallDetectedObjectsCallback(radar_objects_);
-  }
+  // if (DetectedObjectsReady()) {
+  //   CallDetectedObjectsCallback(radar_objects_);
+  // }
 
   return "";
 }
