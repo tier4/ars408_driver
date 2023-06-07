@@ -58,9 +58,9 @@ ros2 launch continental_ars408_socket_can.launch.xml
 - `output_frame`
   - The string parameter of the output frame id
 - `sequential_publish`
-  - The bool parameter to publish outputs sequentially.
-  - If this parameter is false (default parameter), the driver publish output after receiving all 1 cycle sequential data from can data topic.
-  - If this parameter is true, the driver publish output  every time receiving from can data topic.
+  - The bool parameter to determine output publishing behavior.
+  - If this parameter is set to false (default value), the driver will publish output after receiving a complete cycle of sequential data from the CAN data topic.
+  - If this parameter is set to true, the driver will publish output every time data is received from the CAN data topic.
 
 ### launcher
 
