@@ -76,7 +76,7 @@ radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTr
   out_object.acceleration.x = in_object.rel_acceleration_long_x;
   out_object.acceleration.y = in_object.rel_acceleration_lat_y;
 
-  out_object.size.x = 1.0;
+  out_object.size.x = 2.5;
   out_object.size.y = 1.0;
   out_object.size.z = 1.0;
 
