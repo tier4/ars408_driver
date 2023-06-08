@@ -15,6 +15,8 @@
 #ifndef ARS408_ROS__ARS408_CONSTANTS_HPP_
 #define ARS408_ROS__ARS408_CONSTANTS_HPP_
 
+#include <cstdint>
+
 namespace ars408
 {
 const uint32_t RADAR_CFG = 0x200;
