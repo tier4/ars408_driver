@@ -14,6 +14,8 @@
   <arg name="publish_radar_scan" default="false" />
   <arg name="output_frame" default="ars408" />
   <arg name="sequential_publish" default="false" />
+  <arg name="size_x" default="3.5" />
+  <arg name="size_y" default="1.5" />
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
     <arg name="interface" value="$(var interface)" />
@@ -27,6 +29,8 @@
     <arg name="publish_radar_track" value="$(var publish_radar_track)" />
     <arg name="publish_radar_scan" value="$(var publish_radar_scan)" />
     <arg name="output_frame" value="$(var output_frame)" />
-    <arg name="sequential_publish" default="$(var sequential_publish)" />
+    <arg name="sequential_publish" value="$(var sequential_publish)" />
+    <arg name="size_x" value="$(var size_x)" />
+    <arg name="size_y" value="$(var size_y)" />
   </include>
 </launch>
