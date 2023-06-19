@@ -62,9 +62,9 @@ ros2 launch continental_ars408_socket_can.launch.xml
   - If this parameter is set to false (default value), the driver will publish output after receiving a complete cycle of sequential data from the CAN data topic.
   - If this parameter is set to true, the driver will publish output every time data is received from the CAN data topic.
 - `size_x`
-  - The size of x [m]
+  - The assumed x-axis size of output objects. [m]
 - `size_y`
-  - The size of y [m]
+  - The assumed y-axis size of output objects. [m]
 
 ### launcher
 
