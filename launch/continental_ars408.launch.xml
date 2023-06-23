@@ -8,8 +8,8 @@
   <arg name="publish_radar_track" default="true" />
   <arg name="publish_radar_scan" default="false" />
   <arg name="sequential_publish" default="false" />
-  <arg name="size_x" default="3.5" />
-  <arg name="size_y" default="1.5" />
+  <arg name="size_x" default="1.8" />
+  <arg name="size_y" default="1.8" />
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
     <remap from="~/input/frame" to="$(var input/frame)" />

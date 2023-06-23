@@ -14,8 +14,8 @@
   <arg name="publish_radar_scan" default="false" />
   <arg name="output_frame" default="ars408" />
   <arg name="sequential_publish" default="false" />
-  <arg name="size_x" default="3.5" />
-  <arg name="size_y" default="1.5" />
+  <arg name="size_x" default="1.8" />
+  <arg name="size_y" default="1.8" />
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
     <arg name="interface" value="$(var interface)" />

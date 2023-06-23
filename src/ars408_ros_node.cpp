@@ -149,8 +149,8 @@ void PeContinentalArs408Node::Run()
   publish_radar_track_ = this->declare_parameter<bool>("publish_radar_track", true);
   publish_radar_scan_ = this->declare_parameter<bool>("publish_radar_scan", false);
   sequential_publish_ = this->declare_parameter<bool>("sequential_publish", false);
-  size_x_ = this->declare_parameter<double>("size_x", 3.5);
-  size_y_ = this->declare_parameter<double>("size_y", 1.5);
+  size_x_ = this->declare_parameter<double>("size_x", 1.8);
+  size_y_ = this->declare_parameter<double>("size_y", 1.8);
 
   ars408_driver_.RegisterDetectedObjectsCallback(
     std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1),
