@@ -35,11 +35,14 @@ class PeContinentalArs408Node : public rclcpp::Node
   rclcpp::Publisher<radar_msgs::msg::RadarTracks>::SharedPtr publisher_radar_tracks_;
   rclcpp::Publisher<radar_msgs::msg::RadarScan>::SharedPtr publisher_radar_scan_;
 
-  std::string output_frame_;
   can_msgs::msg::Frame::ConstSharedPtr can_data_;
+
+  std::string output_frame_;
   bool publish_radar_track_;
   bool publish_radar_scan_;
   bool sequential_publish_;
+  double size_x_;
+  double size_y_;
 
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;

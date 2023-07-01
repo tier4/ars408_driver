@@ -61,6 +61,10 @@ ros2 launch continental_ars408_socket_can.launch.xml
   - The bool parameter to determine output publishing behavior.
   - If this parameter is set to false (default value), the driver will publish output after receiving a complete cycle of sequential data from the CAN data topic.
   - If this parameter is set to true, the driver will publish output every time data is received from the CAN data topic.
+- `size_x`
+  - The assumed x-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
+- `size_y`
+  - The assumed y-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
 
 ### launcher
 

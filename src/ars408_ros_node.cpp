@@ -76,8 +76,8 @@ radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTr
   out_object.acceleration.x = in_object.rel_acceleration_long_x;
   out_object.acceleration.y = in_object.rel_acceleration_lat_y;
 
-  out_object.size.x = 2.5;
-  out_object.size.y = 1.0;
+  out_object.size.x = size_x_;
+  out_object.size.y = size_y_;
   out_object.size.z = 1.0;
 
   out_object.classification = ConvertRadarClassToAwSemanticClass(in_object.object_class);
@@ -149,6 +149,8 @@ void PeContinentalArs408Node::Run()
   publish_radar_track_ = this->declare_parameter<bool>("publish_radar_track", true);
   publish_radar_scan_ = this->declare_parameter<bool>("publish_radar_scan", false);
   sequential_publish_ = this->declare_parameter<bool>("sequential_publish", false);
+  size_x_ = this->declare_parameter<double>("size_x", 1.8);
+  size_y_ = this->declare_parameter<double>("size_y", 1.8);
 
   ars408_driver_.RegisterDetectedObjectsCallback(
     std::bind(&PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1),
