@@ -8,14 +8,7 @@
 
   <!-- ARS408 driver param -->
   <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <arg name="output/objects" default="objects_raw" />
-  <arg name="output/scan" default="scan" />
-  <arg name="publish_radar_track" default="true" />
-  <arg name="publish_radar_scan" default="false" />
-  <arg name="output_frame" default="ars408" />
-  <arg name="sequential_publish" default="false" />
-  <arg name="size_x" default="1.8" />
-  <arg name="size_y" default="1.8" />
+  <arg name="config_file" default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
 
   <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
     <arg name="interface" value="$(var interface)" />
@@ -24,13 +17,6 @@
 
   <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
     <arg name="input/frame" value="$(var input/frame)" />
-    <arg name="output/objects" value="$(var output/objects)" />
-    <arg name="output/scan" value="$(var output/scan)" />
-    <arg name="publish_radar_track" value="$(var publish_radar_track)" />
-    <arg name="publish_radar_scan" value="$(var publish_radar_scan)" />
-    <arg name="output_frame" value="$(var output_frame)" />
-    <arg name="sequential_publish" value="$(var sequential_publish)" />
-    <arg name="size_x" value="$(var size_x)" />
-    <arg name="size_y" value="$(var size_y)" />
+    <param from="$(var config_file)" allow_substs="true" />
   </include>
 </launch>

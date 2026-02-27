@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    connection_count: 2
+    can_receive_check_rate_hz: 100.0
+    can_receive_check_timeout_sec: 2.0
+    output_frame: ["ars408_1", "ars408_2"]
+    publish_radar_track: [true, true]
+    publish_radar_scan: [false, false]
+    sequential_publish: [false, false]
+    size_x: [1.1, 1.2]
+    size_y: [2.1, 2.2]
+    radar_id: [0, 1]
+    publish_objects_name: ["~/output/objects1", "~/output/objects2"]
+    publish_scan_name: ["~/output/scan1", "~/output/scan2"]

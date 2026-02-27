@@ -23,52 +23,72 @@
 namespace ars408
 {
 
-void Ars408Driver::AddDetectedObject(ars408::RadarObject in_object)
+void Ars408Driver::AddDetectedObject(ars408::RadarObject in_object, uint32_t radar_id)
 {
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
   // check if this object belongs to the current registered sequence before registering it.
-  if (in_object.sequence_id == current_objects_status_.MeasurementCounter) {
-    radar_objects_.insert(std::pair<uint8_t, ars408::RadarObject>(in_object.id, in_object));
-    updated_objects_general_++;
+  if (in_object.sequence_id == current_objects_status_[radar_id].MeasurementCounter) {
+    radar_objects_[radar_id].insert(std::pair<uint8_t, ars408::RadarObject>(in_object.id, in_object));
+    updated_objects_general_[radar_id]++;
   }
 }
-void Ars408Driver::ClearRadarObjects()
+void Ars408Driver::ClearRadarObjects(uint32_t radar_id)
 {
-  radar_objects_.clear();
-  updated_objects_ext_ = 0;
-  updated_objects_general_ = 0;
-  updated_objects_quality_ = 0;
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
+
+  radar_objects_[radar_id].clear();
+  updated_objects_ext_[radar_id] = 0;
+  updated_objects_general_[radar_id] = 0;
+  updated_objects_quality_[radar_id] = 0;
 }
 
 void Ars408Driver::CallDetectedObjectsCallback(
-  std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects)
+  std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects,
+  uint32_t radar_id, const rclcpp::Time & stamp)
 {
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
+
   if (detected_objects_callback_) {  // check if callback was registered
-    detected_objects_callback_(in_detected_objects);
+    detected_objects_callback_(in_detected_objects, radar_id, stamp);
   }
 }
 
 void Ars408Driver::UpdateObjectQuality(
-  uint8_t in_object_id, const ars408::Obj_2_Quality & in_object_quality)
+  uint8_t in_object_id, const ars408::Obj_2_Quality & in_object_quality, uint32_t radar_id)
 {
-  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
-  object_iterator = radar_objects_.find(in_object_id);
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
 
-  if (object_iterator != radar_objects_.end()) {
+  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
+  object_iterator = radar_objects_[radar_id].find(in_object_id);
+
+  if (object_iterator != radar_objects_[radar_id].end()) {
     ars408::RadarObject object_found = object_iterator->second;
     object_found.probability_existence = in_object_quality.ExistenceProbability;
 
-    radar_objects_.at(object_iterator->first) = object_found;
-    updated_objects_quality_++;
+    radar_objects_[radar_id].at(object_iterator->first) = object_found;
+    updated_objects_quality_[radar_id]++;
   }
 }
 
 void Ars408Driver::UpdateObjectExtInfo(
-  uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info)
+  uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info, uint32_t radar_id)
 {
-  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
-  object_iterator = radar_objects_.find(in_object_id);
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
 
-  if (object_iterator != radar_objects_.end()) {
+  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
+  object_iterator = radar_objects_[radar_id].find(in_object_id);
+
+  if (object_iterator != radar_objects_[radar_id].end()) {
     ars408::RadarObject object_found = object_iterator->second;
     object_found.object_class = in_object_ext_info.ObjectClass;
     object_found.length = in_object_ext_info.Length;
@@ -77,26 +97,32 @@ void Ars408Driver::UpdateObjectExtInfo(
     object_found.rel_acceleration_long_x = in_object_ext_info.RelativeLongitudinalAccelerationX;
     object_found.rel_acceleration_lat_y = in_object_ext_info.RelativeLateralAccelerationY;
 
-    radar_objects_.at(object_iterator->first) = object_found;
-    updated_objects_ext_++;
+    radar_objects_[radar_id].at(object_iterator->first) = object_found;
+    updated_objects_ext_[radar_id]++;
   }
 }
 
-bool Ars408Driver::DetectedObjectsReady()
+bool Ars408Driver::DetectedObjectsReady(uint32_t radar_id)
 {
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
+
   bool ready = true;
-  if (valid_radar_state_) {
-    if (updated_objects_general_ == current_objects_status_.NumberOfObjects) {
+  if (valid_radar_state_[radar_id]) {
+    if (updated_objects_general_[radar_id] == current_objects_status_[radar_id].NumberOfObjects) {
       if (
-        current_radar_state_.SendQuality &&
-        (updated_objects_quality_ != current_objects_status_.NumberOfObjects)) {
+        current_radar_state_[radar_id].SendQuality &&
+        (updated_objects_quality_[radar_id] != current_objects_status_[radar_id].NumberOfObjects)) {
         ready = false;
       }
       if (
-        current_radar_state_.SendExtInfo &&
-        (updated_objects_ext_ != current_objects_status_.NumberOfObjects)) {
+        current_radar_state_[radar_id].SendExtInfo &&
+        (updated_objects_ext_[radar_id] != current_objects_status_[radar_id].NumberOfObjects)) {
         ready = false;
       }
+    } else {
+      ready = false;
     }
   } else {
     ready = false;
@@ -104,161 +130,88 @@ bool Ars408Driver::DetectedObjectsReady()
   return ready;
 }
 
-bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state)
+bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state, uint32_t radar_id)
 {
-  if (valid_radar_state_) {
-    out_current_state = current_radar_state_;
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
+
+  if (valid_radar_state_[radar_id]) {
+    out_current_state = current_radar_state_[radar_id];
     return true;
   }
   return false;
 }
 
 void Ars408Driver::RegisterDetectedObjectsCallback(
-  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
-  bool sequential_publish)
+  std::function<void(
+    const std::unordered_map<uint8_t, ars408::RadarObject> &,
+    uint8_t,
+    const rclcpp::Time &
+    )> objects_callback,
+  const std::array<bool, 8> & sequential_publish)
 {
   detected_objects_callback_ = objects_callback;
-  sequential_publish_ = sequential_publish;
+  std::copy(sequential_publish.begin(),
+            sequential_publish.end(),
+            sequential_publish_.begin());
 }
 
-void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8> & in_can_data)
+void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id)
 {
-  current_radar_state_.NvmWriteStatus = ((in_can_data[0] & 0x80u) >> 7u);
-  current_radar_state_.NvmReadStatus = ((in_can_data[0] & 0x40u) >> 6u);
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
+
+  current_radar_state_[radar_id].NvmWriteStatus = ((in_can_data[0] & 0x80u) >> 7u);
+  current_radar_state_[radar_id].NvmReadStatus = ((in_can_data[0] & 0x40u) >> 6u);
 
   uint16_t distance =
     ((((in_can_data[1] & 0xFFu) << 2u) & 0xFFFFu) + ((in_can_data[2] & 0xC0u) >> 6u)) << 1u;
-  current_radar_state_.MaxDistance = distance;
-  current_radar_state_.PersistentError = (in_can_data[2] & 0x20u) >> 5u;
-  current_radar_state_.Interference = (in_can_data[2] & 0x10u) >> 4u;
-  current_radar_state_.TemperatureError = (in_can_data[2] & 0x08u) >> 3u;
-  current_radar_state_.TemporaryError = (in_can_data[2] & 0x04u) >> 2u;
-  current_radar_state_.VoltageError = (in_can_data[2] & 0x02u) >> 1u;
-  current_radar_state_.SensorID = (in_can_data[4] & 0x07u);
-  current_radar_state_.SortingMode =
+  current_radar_state_[radar_id].MaxDistance = distance;
+  current_radar_state_[radar_id].PersistentError = (in_can_data[2] & 0x20u) >> 5u;
+  current_radar_state_[radar_id].Interference = (in_can_data[2] & 0x10u) >> 4u;
+  current_radar_state_[radar_id].TemperatureError = (in_can_data[2] & 0x08u) >> 3u;
+  current_radar_state_[radar_id].TemporaryError = (in_can_data[2] & 0x04u) >> 2u;
+  current_radar_state_[radar_id].VoltageError = (in_can_data[2] & 0x02u) >> 1u;
+  current_radar_state_[radar_id].SensorID = (in_can_data[4] & 0x07u);
+  current_radar_state_[radar_id].SortingMode =
     ars408::RadarState::SortingConfig((in_can_data[4] & 0x70u) >> 4u);
-  current_radar_state_.PowerMode =
+  current_radar_state_[radar_id].PowerMode =
     ars408::RadarState::PowerConfig((in_can_data[3] << 1u) + ((in_can_data[4] & 0x80u) >> 7u));
-  current_radar_state_.EgoMotionRxStatus =
+  current_radar_state_[radar_id].EgoMotionRxStatus =
     ars408::RadarState::MotionRx((in_can_data[5] & 0xC0u) >> 6u);
-  current_radar_state_.SendExtInfo = ars408::RadarState::Config((in_can_data[5] & 0x20u) >> 5u);
-  current_radar_state_.SendQuality = ars408::RadarState::Config((in_can_data[5] & 0x10u) >> 4u);
-  current_radar_state_.OutputType =
+  current_radar_state_[radar_id].SendExtInfo = ars408::RadarState::Config((in_can_data[5] & 0x20u) >> 5u);
+  current_radar_state_[radar_id].SendQuality = ars408::RadarState::Config((in_can_data[5] & 0x10u) >> 4u);
+  current_radar_state_[radar_id].OutputType =
     ars408::RadarState::OutputTypeConfig((in_can_data[5] & 0x0Cu) >> 2u);
-  current_radar_state_.CtrlRelay = ars408::RadarState::Config((in_can_data[5] & 0x02u) >> 1u);
-  current_radar_state_.Rcs_Threshold =
+  current_radar_state_[radar_id].CtrlRelay = ars408::RadarState::Config((in_can_data[5] & 0x02u) >> 1u);
+  current_radar_state_[radar_id].Rcs_Threshold =
     ars408::RadarState::Rcs_ThresholdConfig((in_can_data[5] & 0x1Cu) >> 2u);
-  valid_radar_state_ = true;
+  valid_radar_state_[radar_id] = true;
+
 }
 
-std::array<uint8_t, 8> Ars408Driver::GenerateRadarConfiguration(
-  const ars408::RadarCfg & in_new_status)
+void Ars408Driver::ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id)
 {
-  std::array<uint8_t, 8> can_data = {0, 0, 0, 0, 0, 0, 0, 0};
-
-  if (in_new_status.UpdateStoreInNVM) {
-    can_data[0] = 0x80; /* X000 0000 */
-    if (in_new_status.StoreInNVM) {
-      can_data[5] |= 0x80u; /* 1000 0000 */
-    } else {
-      can_data[5] |= 0x00u; /* 0000 0000 */
-    }
-  }
-  if (in_new_status.UpdateSortIndex) {
-    can_data[0] |= 0x40u; /* 0XXX 0000 */
-    switch (in_new_status.SortIndex) {
-      case ars408::RadarCfg::Sorting::NO_SORT:
-        can_data[5] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::Sorting::BY_RANGE:
-        can_data[5] |= 0x10u; /* 0001 0000 */
-        break;
-      case ars408::RadarCfg::Sorting::BY_RCS:
-        can_data[5] |= 0x20u; /* 0010 0000 */
-        break;
-      default:
-        can_data[5] |= 0x00u;
-    }
-  }
-  if (in_new_status.UpdateSendExtInfo) {
-    can_data[0] |= 0x20u; /* 0000 X000 */
-    if (in_new_status.SendExtInfo) {
-      can_data[5] |= 0x08u; /* 0000 1000 */
-    } else {
-      can_data[5] |= 0x00u; /* 0000 0000 */
-    }
-  }
-  if (in_new_status.UpdateSendQuality) {
-    can_data[0] |= 0x10u; /* 0000 0X00 */
-    if (in_new_status.SendQuality) {
-      can_data[5] |= 0x04u; /* 0000 0100 */
-    } else {
-      can_data[5] |= 0x00u; /* 0010 0000 */
-    }
-  }
-  if (in_new_status.UpdateOutputType) {
-    can_data[0] |= 0x08u;
-    switch (in_new_status.OutputType) { /* 000X X000 */
-      case ars408::RadarCfg::OutputTypeConfig::NONE:
-        can_data[4] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::OutputTypeConfig::OBJECTS:
-        can_data[4] |= 0x08u; /* 0000 1000 */
-        break;
-      case ars408::RadarCfg::OutputTypeConfig::CLUSTERS:
-        can_data[4] |= 0x10u; /* 0001 0000 */
-        break;
-    }
-  }
-  if (in_new_status.UpdateRadarPower) {
-    can_data[0] |= 0x04u;
-    switch (in_new_status.RadarPower) { /* XXX0 0000 */
-      case ars408::RadarCfg::RadarPowerConfig::STANDARD:
-        can_data[4] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_3dB_GAIN:
-        can_data[4] |= 0x20u; /* 0010 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_6dB_GAIN:
-        can_data[4] |= 0x40u; /* 0100 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_9dB_GAIN:
-        can_data[4] |= 0x60u; /* 0110 0000 */
-        break;
-    }
-  }
-  if (in_new_status.UpdateSensorID && in_new_status.SensorID <= 7) {
-    can_data[0] |= 0x02u;
-    can_data[4] |= in_new_status.SensorID; /* 0000 0XXX */
-  }
-  if (in_new_status.UpdateMaxDistance) {
-    can_data[0] |= 0x01u; /* XXXX XXXX */
-                          /* XX00 0000 */
-    // ARS408:
-    // Standard Range Version: 196 – 260 m
-    // Extended Range Version: 196 – 1200 m
-    // uint16_t TempDistance = in_new_status.MaxDistance * 2;
-    // uint8_t low_byte = (TempDistance & 0x0002u) << 6u;
-    // uint8_t high_byte = (TempDistance & 0x0FFFu) >> 2u;
-    can_data[1] = 0x00; /* XXXX XXXX */
-    can_data[2] = 0x00; /* XX00 0000 */
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
   }
 
-  return can_data;
+  current_objects_status_[radar_id].NumberOfObjects = in_can_data[0] & 0xFFu;
+  current_objects_status_[radar_id].MeasurementCounter = (in_can_data[1] << 8u) + (in_can_data[0]);
+  current_objects_status_[radar_id].InterfaceVersion = (in_can_data[3] & 0xF0u) >> 4u;
+
 }
 
-ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data)
+ars408::RadarObject Ars408Driver::ParseObject1_General(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id)
 {
-  current_objects_status_.NumberOfObjects = in_can_data[0] & 0xFFu;
-  current_objects_status_.MeasurementCounter = (in_can_data[1] << 8u) + (in_can_data[0]);
-  current_objects_status_.InterfaceVersion = (in_can_data[3] & 0xF0u) >> 4u;
-  return current_objects_status_;
-}
+  if (radar_id >= RADAR_CONNECTIONS_MAX) {
+    throw std::runtime_error("radar_id out of range");
+  }
 
-ars408::RadarObject Ars408Driver::ParseObject1_General(const std::array<uint8_t, 8> & in_can_data)
-{
   ars408::RadarObject current_object;
-  current_object.sequence_id = current_objects_status_.MeasurementCounter;
+  current_object.sequence_id = current_objects_status_[radar_id].MeasurementCounter;
   current_object.id = in_can_data[0];
   current_object.dynamic_property = ars408::Obj_1_General::DynamicProperty(in_can_data[6] & 0x07u);
   current_object.rcs = (in_can_data[7] * 0.5) - 64.0;
@@ -359,46 +312,84 @@ ars408::Obj_3_Extended Ars408Driver::ParseObject3_Extended(
 
 std::string Ars408Driver::Parse(
   const uint32_t & can_id, const std::array<uint8_t, 8> & in_can_data,
-  const uint8_t & in_data_length)
+  const uint8_t & in_data_length, const rclcpp::Time & stamp)
 {
+  /* Derive Radar ID from CAN ID */
+  uint32_t radar_id = (can_id & 0x00000070u) / 0x10u;
+
   switch (can_id) {
-    case ars408::RADAR_STATE:  /// 0x201 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_00:  /// 0x201 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_01:  /// 0x211 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_02:  /// 0x221 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_03:  /// 0x231 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_04:  /// 0x241 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_05:  /// 0x251 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_06:  /// 0x261 the current configuration and sensor state in message
+    case ars408::RADAR_STATE_07:  /// 0x271 the current configuration and sensor state in message
       if (ars408::RADAR_STATE_BYTES == in_data_length) {
-        ParseRadarState(in_can_data);
+        ParseRadarState(in_can_data, radar_id);
       }
       break;
-    case ars408::OBJ_STATUS:  /// 0x60A contains list header information,
+    case ars408::OBJ_STATUS_00:  /// 0x60A contains list header information,
+    case ars408::OBJ_STATUS_01:  /// 0x61A contains list header information,
+    case ars408::OBJ_STATUS_02:  /// 0x62A contains list header information,
+    case ars408::OBJ_STATUS_03:  /// 0x63A contains list header information,
+    case ars408::OBJ_STATUS_04:  /// 0x64A contains list header information,
+    case ars408::OBJ_STATUS_05:  /// 0x65A contains list header information,
+    case ars408::OBJ_STATUS_06:  /// 0x66A contains list header information,
+    case ars408::OBJ_STATUS_07:  /// 0x67A contains list header information,
                               /// i.e. the number of objects that are sent afterwards
       if (ars408::OBJ_STATUS_BYTES == in_data_length) {
-        // ars408::Obj_0_Status object_status = ParseObject0_Status(in_can_data);
-        if (!sequential_publish_ && DetectedObjectsReady()) {
-          CallDetectedObjectsCallback(radar_objects_);
+        if (!sequential_publish_[radar_id] && DetectedObjectsReady(radar_id)) {
+          CallDetectedObjectsCallback(radar_objects_[radar_id], radar_id, stamp);
         }
-        ClearRadarObjects();
+        ParseObject0_Status(in_can_data, radar_id);
+        ClearRadarObjects(radar_id);
       }
       break;
-    case ars408::OBJ_GENERAL:  /// 0x60B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_00:  /// 0x60B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_01:  /// 0x61B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_02:  /// 0x62B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_03:  /// 0x63B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_04:  /// 0x64B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_05:  /// 0x65B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_06:  /// 0x66B contains the position and velocity of the objects
+    case ars408::OBJ_GENERAL_07:  /// 0x67B contains the position and velocity of the objects
       if (ars408::OBJ_GENERAL_BYTES == in_data_length) {
-        ars408::RadarObject object = ParseObject1_General(in_can_data);
-        AddDetectedObject(object);
+        ars408::RadarObject object = ParseObject1_General(in_can_data, radar_id);
+        AddDetectedObject(object, radar_id);
       }
       break;
-    case ars408::OBJ_QUALITY:  /// 0x60C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_00:  /// 0x60C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_01:  /// 0x61C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_02:  /// 0x62C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_03:  /// 0x63C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_04:  /// 0x64C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_05:  /// 0x65C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_06:  /// 0x66C contains the quality information of the objects
+    case ars408::OBJ_QUALITY_07:  /// 0x67C contains the quality information of the objects
       if (ars408::OBJ_QUALITY_BYTES == in_data_length) {
         ars408::Obj_2_Quality object_quality = ParseObject2_Quality(in_can_data);
-        UpdateObjectQuality(object_quality.Id, object_quality);
+        UpdateObjectQuality(object_quality.Id, object_quality, radar_id);
       }
       break;
-    case ars408::OBJ_EXTENDED:  /// 0x60D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_00:  /// 0x60D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_01:  /// 0x61D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_02:  /// 0x62D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_03:  /// 0x63D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_04:  /// 0x64D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_05:  /// 0x65D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_06:  /// 0x66D contains the quality information of the objects
+    case ars408::OBJ_EXTENDED_07:  /// 0x67D contains the quality information of the objects
       if (ars408::OBJ_EXTENDED_BYTES == in_data_length) {
         ars408::Obj_3_Extended object_ext_info = ParseObject3_Extended(in_can_data);
-        UpdateObjectExtInfo(object_ext_info.Id, object_ext_info);
+        UpdateObjectExtInfo(object_ext_info.Id, object_ext_info, radar_id);
       }
       break;
   }
 
-  if (sequential_publish_ && DetectedObjectsReady()) {
-    CallDetectedObjectsCallback(radar_objects_);
+  if (sequential_publish_[radar_id] && DetectedObjectsReady(radar_id)) {
+    CallDetectedObjectsCallback(radar_objects_[radar_id], radar_id, stamp);
   }
 
   return "";

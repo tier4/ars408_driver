@@ -19,6 +19,8 @@
 #include "ars408_ros/ars408_constants.hpp"
 #include "ars408_ros/ars408_object.hpp"
 
+#include <rclcpp/rclcpp.hpp>
+
 #include <functional>
 #include <iostream>
 #include <string>
@@ -30,77 +32,80 @@ namespace ars408
 class Ars408Driver
 {
 private:
-  bool valid_radar_state_;
-  bool sequential_publish_;
-  ars408::RadarState current_radar_state_;
-  ars408::Obj_0_Status current_objects_status_;
-  ars408::Obj_1_General objects_general_;
-  ars408::Obj_2_Quality objects_quality_;
-  ars408::Obj_3_Extended objects_extended_;
+  std::array<bool, RADAR_CONNECTIONS_MAX> valid_radar_state_;
+  std::array<bool, RADAR_CONNECTIONS_MAX> sequential_publish_;
+  std::array<ars408::RadarState, RADAR_CONNECTIONS_MAX> current_radar_state_;
+  std::array<ars408::Obj_0_Status, RADAR_CONNECTIONS_MAX> current_objects_status_;
+  std::array<ars408::Obj_1_General, RADAR_CONNECTIONS_MAX> objects_general_;
+  std::array<ars408::Obj_2_Quality, RADAR_CONNECTIONS_MAX> objects_quality_;
+  std::array<ars408::Obj_3_Extended, RADAR_CONNECTIONS_MAX> objects_extended_;
 
-  std::unordered_map<uint8_t, ars408::RadarObject> radar_objects_;
-  uint8_t updated_objects_general_, updated_objects_quality_, updated_objects_ext_;
+  std::array<std::unordered_map<uint8_t, ars408::RadarObject>, RADAR_CONNECTIONS_MAX> radar_objects_;
+  std::array<uint8_t, RADAR_CONNECTIONS_MAX> updated_objects_general_{0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu};
+  std::array<uint8_t, RADAR_CONNECTIONS_MAX> updated_objects_quality_{0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu};
+  std::array<uint8_t, RADAR_CONNECTIONS_MAX> updated_objects_ext_{0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu};
 
-  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)>
+  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &,
+    uint8_t, const rclcpp::Time &)>
     detected_objects_callback_;
 
   /**
    * Adds a RadarObject to the pool of objects
    * @param in_object RadarObject to be added
    */
-  void AddDetectedObject(ars408::RadarObject in_object);
+  void AddDetectedObject(ars408::RadarObject in_object, uint32_t radar_id);
 
   /**
    * Calls the registered callback to send back the detected objects from a measurement.
    * @param in_detected_objects
    */
   void CallDetectedObjectsCallback(
-    std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects);
+    std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects,
+    uint32_t radar_id, const rclcpp::Time & stamp);
 
   /**
    * Checks whether all the detected objects have been received and parsed.
    * @return Returns true if all the objects were received
    */
-  bool DetectedObjectsReady();
+  bool DetectedObjectsReady(uint32_t radar_id);
 
   /**
    * Resets Detected objects and its counters
    */
-  void ClearRadarObjects();
+  void ClearRadarObjects(uint32_t radar_id);
 
   /**
    * Updates existing Object with its quality information
    * @param in_object_id Id of the object to update
    * @param in_object_quality quality information object to apply to the object
    */
-  void UpdateObjectQuality(uint8_t in_object_id, const ars408::Obj_2_Quality & in_object_quality);
+  void UpdateObjectQuality(uint8_t in_object_id, const ars408::Obj_2_Quality & in_object_quality, uint32_t radar_id);
 
   /**
    * Updates existing Object with its extended information
    * @param in_object_id Id of the object to update
    * @param in_object_ext_info extended information object to apply to the object
    */
-  void UpdateObjectExtInfo(uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info);
+  void UpdateObjectExtInfo(uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info, uint32_t radar_id);
 
   /**
    * Parses RadarState CAN 0x201 and stores internally current status (current_state_)
    * @param in_can_data std::array<uint8_t, 8> containing the CAN message
    */
-  void ParseRadarState(const std::array<uint8_t, 8> & in_can_data);
+  void ParseRadarState(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id);
 
   /**
    * Parses Object0_Status CAN 0x60A
    * @param in_can_data std::array<uint8_t, 8>
-   * @return object filled with the current number of objects
    */
-  ars408::Obj_0_Status ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data);
+  void ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id);
 
   /**
    * Parses Object1_General CAN 0x60B
    * @param in_can_data std::array<uint8_t, 8> containing the CAN message
    * @return object filled with the details about one object
    */
-  ars408::RadarObject ParseObject1_General(const std::array<uint8_t, 8> & in_can_data);
+  ars408::RadarObject ParseObject1_General(const std::array<uint8_t, 8> & in_can_data, uint32_t radar_id);
 
   /**
    * Parses Object2_Quality CAN 0x60C
@@ -126,7 +131,7 @@ public:
    */
   std::string Parse(
     const uint32_t & can_id, const std::array<uint8_t, 8> & in_can_data,
-    const uint8_t & in_data_length);
+    const uint8_t & in_data_length, const rclcpp::Time & stamp);
 
   /**
    * Returns true if the RadarState has been received, if true it fills current_state with the valid
@@ -134,14 +139,7 @@ public:
    * @param out_current_state
    * @return True if the RadarState has been received.
    */
-  bool GetCurrentRadarState(ars408::RadarState & out_current_state);
-
-  /**
-   * Generates the CAN message to configure the radar according to in_new_status
-   * @param in_new_status object containing the desired configuration
-   * @return array containing the can command to be send
-   */
-  std::array<uint8_t, 8> GenerateRadarConfiguration(const ars408::RadarCfg & in_new_status);
+  bool GetCurrentRadarState(ars408::RadarState & out_current_state, uint32_t radar_id);
 
   /**
    * Register the function to be called once all the Radar objects are ready.
@@ -150,8 +148,12 @@ public:
    */
 
   void RegisterDetectedObjectsCallback(
-    std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
-    bool sequential_publish);
+    std::function<void(
+      const std::unordered_map<uint8_t, ars408::RadarObject> &,
+      uint8_t,
+      const rclcpp::Time &
+    )> objects_callback,
+    const std::array<bool, RADAR_CONNECTIONS_MAX> & sequential_publish);
 };
 }  // namespace ars408
 
