@@ -274,7 +274,7 @@ void PeContinentalArs408Node::SetParameter()
   }
 
   auto radar_id = this->declare_parameter<std::vector<int>>("radar_id");
-  radar_id_.resize(connection_count_);
+  radar_id_.resize(radar_id.size());
   for (size_t i = 0; i < connection_count_; i++) {
     radar_id_[i] = static_cast<uint8_t>(radar_id[i]);
   }
