@@ -3,20 +3,35 @@
   <arg name="launch_driver" default="true" />
 
   <!-- socket can param -->
-  <arg name="interface" default="can0" />
   <arg name="receiver_interval_sec" default="0.01" />
 
-  <!-- ARS408 driver param -->
+  <!-- ARS408 driver param (single driver; both CANs feed the same input/frame) -->
   <arg name="input/frame" default="/sensing/radar/can_tx" />
   <arg name="config_file" default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
 
-  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
-    <arg name="interface" value="$(var interface)" />
-    <arg name="interval_sec" value="$(var receiver_interval_sec)" />
-  </include>
+  <!-- CAN receiver for can0 (publishes to /sensing/radar/can_tx) -->
+  <group>
+    <push-ros-namespace namespace="can0"/>
+    <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
+      <arg name="interface" value="can0" />
+      <arg name="interval_sec" value="$(var receiver_interval_sec)" />
+      <arg name="from_can_bus_topic" value="$(var input/frame)" />
+    </include>
+  </group>
 
+  <!-- CAN receiver for can1 (also publishes to /sensing/radar/can_tx) -->
+  <group>
+    <push-ros-namespace namespace="can1"/>
+    <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
+      <arg name="interface" value="can1" />
+      <arg name="interval_sec" value="$(var receiver_interval_sec)" />
+      <arg name="from_can_bus_topic" value="$(var input/frame)" />
+    </include>
+  </group>
+
+  <!-- Single ARS408 driver node consuming the merged topic -->
   <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
     <arg name="input/frame" value="$(var input/frame)" />
-    <param from="$(var config_file)" allow_substs="true" />
+    <arg name="config_file" value="$(var config_file)" />
   </include>
 </launch>
