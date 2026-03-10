@@ -61,7 +61,7 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
           diag.level = DiagnosticStatus::ERROR;
           diag.name = "ars408_driver";
           diag.message = "can msos topic received timeout - Radar ID(" + std::to_string(radar_id_[i]) + ")";
-          diag.hardware_id = "sensing";
+          diag.hardware_id = output_frame_[i];
 
           diagnostic_msgs::msg::KeyValue kv;
           kv.key = "error_type";
@@ -361,7 +361,7 @@ void PeContinentalArs408Node::Run()
     publisher_radar_scan_[i] =
       this->create_publisher<radar_msgs::msg::RadarScan>(publish_radar_scan_name_[i], 10);
   }
-  diagnostics_pub_ = this->create_publisher<DiagnosticArray>("diagnostics", rclcpp::QoS{1});
+  diagnostics_pub_ = this->create_publisher<DiagnosticArray>("/diagnostics", rclcpp::QoS{1});
 
   can_receive_check_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(static_cast<int64_t>(1000.0 / can_receive_check_rate_hz_)),
