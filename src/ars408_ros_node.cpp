@@ -55,22 +55,17 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
         }
 
         // Create MRM diagnostic message
-        if (!diagnostic_published_[i]) {
-          diagnostic_published_[i] = true;
-          DiagnosticStatus diag;
-          diag.level = DiagnosticStatus::ERROR;
-          diag.name = "ars408_driver";
-          diag.message = "can msos topic received timeout - Radar ID(" + std::to_string(radar_id_[i]) + ")";
-          diag.hardware_id = output_frame_[i];
+        DiagnosticStatus diag;
+        diag.level = DiagnosticStatus::ERROR;
+        diag.name = "ars408_driver";
+        diag.message = "can msos topic received timeout - Radar ID(" + std::to_string(radar_id_[i]) + ")";
+        diag.hardware_id = output_frame_[i];
 
-          diagnostic_msgs::msg::KeyValue kv;
-          kv.key = "error_type";
-          kv.value = "CAN_MSGS_RECEIVE_TIMEOUT";
-          diag.values.push_back(kv);
-          diag_array.status.push_back(diag);
-        }
-      } else {
-        diagnostic_published_[i] = false;
+        diagnostic_msgs::msg::KeyValue kv;
+        kv.key = "error_type";
+        kv.value = "CAN_MSGS_RECEIVE_TIMEOUT";
+        diag.values.push_back(kv);
+        diag_array.status.push_back(diag);
       }
     }
   }
@@ -368,8 +363,6 @@ void PeContinentalArs408Node::Run()
     std::bind(&PeContinentalArs408Node::OnCanReceiveCheck, this));
 
   last_warn_times_.assign(connection_count_, rclcpp::Time(0, 0, this->get_clock()->get_clock_type()));
-
-  diagnostic_published_.assign(connection_count_, false);
 }
 
 #include "rclcpp_components/register_node_macro.hpp"

@@ -56,7 +56,6 @@ class PeContinentalArs408Node : public rclcpp::Node
   double can_receive_check_rate_hz_;
   double can_receive_check_timeout_sec_;
   std::vector<rclcpp::Time> last_warn_times_;
-  std::vector<bool> diagnostic_published_;
 
   const uint8_t max_radar_id = 255;
   std::vector<std::vector<unique_identifier_msgs::msg::UUID>> UUID_table_;
