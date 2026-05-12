@@ -29,7 +29,7 @@ sudo ip link set canX up type can bitrate 500000
 ```sh
 # Object detection with all extended properties
 # Please configure the Sensor ID and related settings for the CAN interfaces (as in steps 3 and 4)
-# Set Y to the value (0?7) that corresponds to the Sensor ID configured in the hardware
+# Set Y to the value (0-7) that corresponds to the Sensor ID configured in the hardware
 # On first-time hardware setup, the Sensor ID is 0, so set Y to 0
 cansend canX 2Y0#FA000000089C0000  # Set Sensor ID from Y to 0
 cansend canX 2Y0#FA000000099C0000  # Set Sensor ID from Y to 1
@@ -45,6 +45,7 @@ cansend canX 2Y0#FA0000000F9C0000  # Set Sensor ID from Y to 7
 
 ```sh
 ros2 launch pe_ars408_ros continental_ars408_socket_can.launch.xml receiver_interval_sec:=1.0
+```
 
 ## Design
 ### Input
