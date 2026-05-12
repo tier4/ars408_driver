@@ -19,21 +19,32 @@ $ colcon build
 3. Enable can port
 
 ```sh
-sudo ip link set can0 up type can bitrate 500000
+# Configure only the necessary CAN ports
+# Replace X with any value
+sudo ip link set canX up type can bitrate 500000
 ```
 
-4. setup hardware (only first time)
+4. setup hardware (Only the first time or when the hardware configuration changes)
 
 ```sh
-# Objects detection with all extended properties
-cansend can0 200#F8000000089C0000
+# Object detection with all extended properties
+# Please configure the Sensor ID and related settings for the CAN interfaces (as in steps 3 and 4)
+# Set Y to the value (0?7) that corresponds to the Sensor ID configured in the hardware
+# On first-time hardware setup, the Sensor ID is 0, so set Y to 0
+cansend canX 2Y0#FA000000089C0000  # Set Sensor ID from Y to 0
+cansend canX 2Y0#FA000000099C0000  # Set Sensor ID from Y to 1
+cansend canX 2Y0#FA0000000A9C0000  # Set Sensor ID from Y to 2
+cansend canX 2Y0#FA0000000B9C0000  # Set Sensor ID from Y to 3
+cansend canX 2Y0#FA0000000C9C0000  # Set Sensor ID from Y to 4
+cansend canX 2Y0#FA0000000D9C0000  # Set Sensor ID from Y to 5
+cansend canX 2Y0#FA0000000E9C0000  # Set Sensor ID from Y to 6
+cansend canX 2Y0#FA0000000F9C0000  # Set Sensor ID from Y to 7
 ```
 
 5. Launch the driver
 
 ```sh
-ros2 launch continental_ars408_socket_can.launch.xml
-```
+ros2 launch pe_ars408_ros continental_ars408_socket_can.launch.xml receiver_interval_sec:=1.0
 
 ## Design
 ### Input
@@ -65,6 +76,25 @@ ros2 launch continental_ars408_socket_can.launch.xml
   - The assumed x-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
 - `size_y`
   - The assumed y-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
+- `connection_count`
+  - The parameter specifies the Radar (ARS408) connection count.
+  - The default value is 2, which derives from the number of connected ARS408 units.
+- `radar_id`
+  - The parameter specifies the Radar ID.
+  - The default parameter values are [0, 1].
+  - The number of settings derives from connection_count, and each can be configured with a unique value from 0 to 7.
+- `publish_radar_tracks_name`
+  - The string parameter specifies the topic name to publish radar tracks.
+  - The default parameter values are ["~/output/objects1", "~/output/objects2"].
+  - The number of settings derives from connection_count, and each can be configured with a unique topic name.
+- `publish_radar_scan_name`
+  - The string parameter specifies the topic name to publish scan radar.
+  - The default parameter values are ["~/output/scan1", "~/output/scan2"].
+  - The number of settings derives from connection_count, and each can be configured with a unique topic name.
+- `can_receive_check_rate_hz`
+  - The parameter specifies the check/poll rate of the CAN receive status [Hz].
+- `can_receive_check_timeout_sec`
+  - The parameter specifies the CAN receive status check/poll timeout [sec].
 
 ### launcher
 
@@ -72,7 +102,7 @@ ros2 launch continental_ars408_socket_can.launch.xml
   - Base launcher
 - continental_ars408_socket_can.xml
   - The launch file will initiate two nodes:
-    1. socketcan_bridge to read from `can0` and publish the CAN msg in `can_raw`
+    1. socketcan_bridge to read from `canN` and publish the CAN msg in `can_raw`
     1. Continental ARS408 driver will read the `can_raw`, parse and publish `RadarTrack` or `RadarReturn`
 
 ## Reference
