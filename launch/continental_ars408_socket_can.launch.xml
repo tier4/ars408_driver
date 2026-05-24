@@ -1,36 +1,55 @@
 <launch>
-  <!-- launch param -->
+  <!-- launch flags -->
   <arg name="launch_driver" default="true" />
 
-  <!-- socket can param -->
-  <arg name="interface" default="can0" />
+  <!-- SocketCAN params (single CAN bus shared by all radars) -->
+  <arg name="can_interface"        default="can0" />
   <arg name="receiver_interval_sec" default="0.01" />
+  <arg name="can_raw_topic"
+    default="/sensing/radar/can_raw" />
 
-  <!-- ARS408 driver param -->
-  <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <arg name="output/objects" default="objects_raw" />
-  <arg name="output/scan" default="scan" />
-  <arg name="publish_radar_track" default="true" />
-  <arg name="publish_radar_scan" default="false" />
-  <arg name="output_frame" default="ars408" />
-  <arg name="sequential_publish" default="false" />
-  <arg name="size_x" default="1.8" />
-  <arg name="size_y" default="1.8" />
+  <!-- Radar 0: Sensor ID=0 -->
+  <arg name="radar0/radar_id"     default="0" />
+  <arg name="radar0/output_frame" default="ars408_0" />
+  <arg name="radar0/config_file"
+    default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
 
-  <include file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py" if="$(var launch_driver)">
-    <arg name="interface" value="$(var interface)" />
-    <arg name="interval_sec" value="$(var receiver_interval_sec)" />
+  <!-- Radar 1: Sensor ID=1 -->
+  <arg name="radar1/radar_id"     default="1" />
+  <arg name="radar1/output_frame" default="ars408_1" />
+  <arg name="radar1/config_file"
+    default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
+
+  <!-- Single SocketCAN bridge: publishes all frames to one topic -->
+  <include
+    file="$(find-pkg-share ros2_socketcan)/launch/socket_can_receiver.launch.py"
+    if="$(var launch_driver)">
+    <arg name="interface"          value="$(var can_interface)" />
+    <arg name="interval_sec"       value="$(var receiver_interval_sec)" />
+    <arg name="from_can_bus_topic" value="$(var can_raw_topic)" />
   </include>
 
-  <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
-    <arg name="input/frame" value="$(var input/frame)" />
-    <arg name="output/objects" value="$(var output/objects)" />
-    <arg name="output/scan" value="$(var output/scan)" />
-    <arg name="publish_radar_track" value="$(var publish_radar_track)" />
-    <arg name="publish_radar_scan" value="$(var publish_radar_scan)" />
-    <arg name="output_frame" value="$(var output_frame)" />
-    <arg name="sequential_publish" value="$(var sequential_publish)" />
-    <arg name="size_x" value="$(var size_x)" />
-    <arg name="size_y" value="$(var size_y)" />
-  </include>
+  <!-- ARS408 driver node for radar 0
+       Subscribes to the shared CAN topic and ignores frames from other Sensor IDs -->
+  <group>
+    <push-ros-namespace namespace="radar0" />
+    <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
+      <arg name="input/frame" value="$(var can_raw_topic)" />
+      <arg name="config_file" value="$(var radar0/config_file)" />
+    </include>
+    <param name="pe_ars408_node/radar_id"     value="$(var radar0/radar_id)" />
+    <param name="pe_ars408_node/output_frame" value="$(var radar0/output_frame)" />
+  </group>
+
+  <!-- ARS408 driver node for radar 1
+       Subscribes to the shared CAN topic and ignores frames from other Sensor IDs -->
+  <group>
+    <push-ros-namespace namespace="radar1" />
+    <include file="$(find-pkg-share pe_ars408_ros)/launch/continental_ars408.launch.xml">
+      <arg name="input/frame" value="$(var can_raw_topic)" />
+      <arg name="config_file" value="$(var radar1/config_file)" />
+    </include>
+    <param name="pe_ars408_node/radar_id"     value="$(var radar1/radar_id)" />
+    <param name="pe_ars408_node/output_frame" value="$(var radar1/output_frame)" />
+  </group>
 </launch>

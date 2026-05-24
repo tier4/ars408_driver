@@ -28,6 +28,9 @@ class RadarCommand
 public:
   explicit RadarCommand(uint32_t CAN_ID) { CAN_ID_ = CAN_ID; }
 
+  // Note: This CAN_ID is the base CAN_ID for each command, and the actual CAN_ID will be this value plus an index.
+  // For example, the CAN_ID for RadarCfg is 0x200, and the actual CAN_ID will be 0x200 + index * 0x10.
+  // This design is to separate CAN_IDs for each radar, as the same type of command may be sent from multiple radars.
   virtual uint32_t GetCommandType() { return CAN_ID_; }
 
 protected:
@@ -41,7 +44,7 @@ protected:
 class RadarCfg : RadarCommand
 {
 public:
-  RadarCfg() : RadarCommand(ars408::RADAR_CFG) {}
+  RadarCfg() : RadarCommand(ars408::RADAR_CFG_00) {}
   bool UpdateMaxDistance;     /*Allow change of maximum distance if true*/
   bool UpdateSensorID;        /*Allow change of sensor ID if true*/
   bool UpdateRadarPower;      /*Allow change of radar output power if true*/
@@ -117,7 +120,7 @@ public:
 class RadarState : public RadarCommand
 {
 public:
-  RadarState() : RadarCommand(ars408::RADAR_STATE) {}
+  RadarState() : RadarCommand(ars408::RADAR_STATE_00) {}
   std::string ToString()
   {
     std::ostringstream stream;
@@ -261,7 +264,7 @@ public:
 class FilterCfg : RadarCommand
 {
 public:
-  FilterCfg() : RadarCommand(ars408::FILTER_CFG) {}
+  FilterCfg() : RadarCommand(ars408::FILTER_CFG_00) {}
   bool UpdateFilterConfig;     /*Allow change of filter configuration if true*/
   bool ActivateSelectedFilter; /*De-/activate filter configuration for specified filter criterion*/
   enum FilterTypeConfig {
@@ -360,7 +363,7 @@ public:
 class FilterState_Header : RadarCommand
 {
 public:
-  FilterState_Header() : RadarCommand(ars408::FILTER_STATE_HEADER) {}
+  FilterState_Header() : RadarCommand(ars408::FILTER_STATE_HEADER_00) {}
 };
 
 /*
@@ -371,7 +374,7 @@ public:
 class FilterState_Cfg : RadarCommand
 {
 public:
-  FilterState_Cfg() : RadarCommand(ars408::FILER_STATE_CFG) {}
+  FilterState_Cfg() : RadarCommand(ars408::FILTER_STATE_CFG_00) {}
   const int CAN_ID = 0x204;
 };
 
@@ -383,7 +386,7 @@ public:
 class CollDetCfg : RadarCommand
 {
 public:
-  CollDetCfg() : RadarCommand(ars408::COLL_DET_CFG) {}
+  CollDetCfg() : RadarCommand(ars408::COLL_DET_CFG_00) {}
 };
 
 /*
@@ -394,7 +397,7 @@ public:
 class CollDetRegionCfg : RadarCommand
 {
 public:
-  CollDetRegionCfg() : RadarCommand(ars408::COLL_DET_REGION_CFG) {}
+  CollDetRegionCfg() : RadarCommand(ars408::COLL_DET_REGION_CFG_00) {}
 };
 
 /*
@@ -405,7 +408,7 @@ public:
 class CollDetState : RadarCommand
 {
 public:
-  CollDetState() : RadarCommand(ars408::COLL_DET_STATE) {}
+  CollDetState() : RadarCommand(ars408::COLL_DET_STATE_00) {}
 };
 
 /*
@@ -416,7 +419,7 @@ public:
 class CollDetRegionState : RadarCommand
 {
 public:
-  CollDetRegionState() : RadarCommand(ars408::COLL_DET_REGION_STATE) {}
+  CollDetRegionState() : RadarCommand(ars408::COLL_DET_REGION_STATE_00) {}
 };
 
 /*
@@ -427,7 +430,7 @@ public:
 class SpeedInformation : RadarCommand
 {
 public:
-  SpeedInformation() : RadarCommand(ars408::SPEED_INFORMATION) {}
+  SpeedInformation() : RadarCommand(ars408::SPEED_INFORMATION_00) {}
   /*
    * Indicates the direction of the radar movement
    * while looking into positive straight ahead direction
@@ -449,7 +452,7 @@ public:
 class YawRateInformation : RadarCommand
 {
 public:
-  YawRateInformation() : RadarCommand(ars408::YAW_RATE_INFORMATION) {}
+  YawRateInformation() : RadarCommand(ars408::YAW_RATE_INFORMATION_00) {}
   /* -327.68 327.68    0.01    deg/s */
   /*
    * Rate of change of angular velocity looking into positive straight ahead direction.
@@ -466,7 +469,7 @@ public:
 class Cluster_0_Status : RadarCommand
 {
 public:
-  Cluster_0_Status() : RadarCommand(ars408::CLUSTER_STATUS) {}
+  Cluster_0_Status() : RadarCommand(ars408::CLUSTER_STATUS_00) {}
 };
 
 /*
@@ -477,7 +480,7 @@ public:
 class Cluster_1_General : RadarCommand
 {
 public:
-  Cluster_1_General() : RadarCommand(ars408::CLUSTER_GENERAL) {}
+  Cluster_1_General() : RadarCommand(ars408::CLUSTER_GENERAL_00) {}
 };
 
 /*
@@ -488,7 +491,7 @@ public:
 class Cluster_2_Quality : RadarCommand
 {
 public:
-  Cluster_2_Quality() : RadarCommand(ars408::CLUSTER_QUALITY) {}
+  Cluster_2_Quality() : RadarCommand(ars408::CLUSTER_QUALITY_00) {}
 };
 
 /*
@@ -500,7 +503,7 @@ public:
 class Obj_0_Status : RadarCommand
 {
 public:
-  Obj_0_Status() : RadarCommand(ars408::OBJ_STATUS) {}
+  Obj_0_Status() : RadarCommand(ars408::OBJ_STATUS_00) {}
   std::string ToString()
   {
     std::ostringstream stream;
@@ -528,7 +531,7 @@ public:
 class Obj_1_General : RadarCommand
 {
 public:
-  Obj_1_General() : RadarCommand(ars408::OBJ_GENERAL) {}
+  Obj_1_General() : RadarCommand(ars408::OBJ_GENERAL_00) {}
 
   /* 0       255       1 */
   /*
@@ -586,7 +589,7 @@ public:
   float RelativeLongitudinalAccelerationXRms;
   float RelativeLateralAccelerationYRms;
   float ExistenceProbability; /*Probability of existence*/
-  Obj_2_Quality() : RadarCommand(ars408::OBJ_QUALITY) {}
+  Obj_2_Quality() : RadarCommand(ars408::OBJ_QUALITY_00) {}
 };
 
 /*
@@ -600,7 +603,7 @@ public:
 class Obj_3_Extended : RadarCommand
 {
 public:
-  Obj_3_Extended() : RadarCommand(ars408::OBJ_EXTENDED) {}
+  Obj_3_Extended() : RadarCommand(ars408::OBJ_EXTENDED_00) {}
   /* 0       255       1 */
   /*
    * Object ID
@@ -642,7 +645,7 @@ public:
 class Obj_4_Warning : RadarCommand
 {
 public:
-  Obj_4_Warning() : RadarCommand(ars408::OBJ_WARNING) {}
+  Obj_4_Warning() : RadarCommand(ars408::OBJ_WARNING_00) {}
 };
 
 /*
@@ -653,7 +656,7 @@ public:
 class VersionID : RadarCommand
 {
 public:
-  VersionID() : RadarCommand(ars408::VERSION_ID) {}
+  VersionID() : RadarCommand(ars408::VERSION_ID_00) {}
 };
 
 /*

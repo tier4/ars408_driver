@@ -1,0 +1,13 @@
+/**:
+  ros__parameters:
+    radar_id: 0
+    can_receive_check_rate_hz: 100.0
+    can_receive_check_timeout_sec: 2.0
+    output_frame: "ars408"
+    publish_radar_track: true
+    publish_radar_scan: false
+    sequential_publish: false
+    size_x: 1.8
+    size_y: 1.8
+    publish_objects_name: "~/output/objects"
+    publish_scan_name: "~/output/scan"
