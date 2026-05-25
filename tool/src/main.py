@@ -65,7 +65,8 @@ class App(tk.Tk):
         top.pack(fill="x", padx=8, pady=(8, 0))
         tk.Label(top, text="CAN Interface:").pack(side="left", **pad)
         self._iface_var = tk.StringVar(value="vcan0")
-        tk.Entry(top, textvariable=self._iface_var, width=12).pack(side="left", **pad)
+        self._entry_iface = tk.Entry(top, textvariable=self._iface_var, width=12)
+        self._entry_iface.pack(side="left", **pad)
         self._btn_connect = tk.Button(top, text="Connect",    width=9, command=self._on_connect)
         self._btn_connect.pack(side="left", **pad)
         self._btn_disconnect = tk.Button(top, text="Disconnect", width=9,
@@ -78,22 +79,13 @@ class App(tk.Tk):
 
         tk.Label(top, text="Current Sensor ID:").pack(side="left", **pad)
         self._cur_sensor_id_var = tk.IntVar(value=0)
-        tk.Spinbox(top, from_=0, to=7, increment=1,
-                   textvariable=self._cur_sensor_id_var,
-                   width=3).pack(side="left", **pad)
+        self._spn_sensor_id = tk.Spinbox(top, from_=0, to=7, increment=1,
+                                          textvariable=self._cur_sensor_id_var,
+                                          width=3)
+        self._spn_sensor_id.pack(side="left", **pad)
         tk.Button(top, text="Apply", width=6,
                   command=self._on_apply_sensor_id).pack(side="left", **pad)
 
-        ttk.Separator(top, orient="vertical").pack(side="left", fill="y", padx=8)
-
-        tk.Label(top, text="Send CAN ID:").pack(side="left", **pad)
-        self._lbl_send_can_id = tk.Label(top, text="0x200",
-                                          fg="blue", font=("Courier", 9, "bold"), width=6)
-        self._lbl_send_can_id.pack(side="left", **pad)
-        tk.Label(top, text="Recv CAN ID:").pack(side="left", **pad)
-        self._lbl_recv_can_id = tk.Label(top, text="0x201",
-                                          fg="darkgreen", font=("Courier", 9, "bold"), width=6)
-        self._lbl_recv_can_id.pack(side="left", **pad)
 
         # === Main: left (send) / right (compare + sensor) ===
         main = tk.Frame(self)
@@ -114,7 +106,7 @@ class App(tk.Tk):
 
         rows = [
             # (label, field, widget_type, options_or_range)
-            ("MaxDistance [m]", "MaxDistance",  "spinbox", (98, 1200, 2)),
+            ("MaxDistance [m]", "MaxDistance",  "spinbox", (196, 1200, 2)),
             ("SensorID",        "SensorID",     "spinbox", (0, 7, 1)),
             ("OutputType",      "OutputType",   "combo",   OUTPUT_TYPE_OPTS),
             ("SendQuality",     "SendQuality",  "combo",   {0: "Inactive", 1: "Active"}),
@@ -164,11 +156,12 @@ class App(tk.Tk):
         # Buttons
         btn_frame = tk.Frame(frame)
         btn_frame.grid(row=fixed_row + 1, column=0, columnspan=3, pady=(10, 0))
-        tk.Button(btn_frame, text="Send #200", width=12,
-                  command=self._on_send).pack(side="left", padx=4)
-        tk.Button(btn_frame, text="Save",      width=8,
+        self._btn_send = tk.Button(btn_frame, text="Send 0x200", width=12,
+                                   command=self._on_send)
+        self._btn_send.pack(side="left", padx=4)
+        tk.Button(btn_frame, text="Save", width=8,
                   command=self._save_settings).pack(side="left", padx=4)
-        tk.Button(btn_frame, text="Load",      width=8,
+        tk.Button(btn_frame, text="Load", width=8,
                   command=self._load_settings).pack(side="left", padx=4)
 
         # Hex preview (#200)
@@ -235,8 +228,9 @@ class App(tk.Tk):
         self._lbl_hex201.pack(side="left")
 
         # === Sensor status ===
-        st_frame = tk.LabelFrame(right, text="Sensor Status  (#201)", padx=6, pady=6)
-        st_frame.pack(fill="x", pady=(8, 0))
+        self._frm_status = tk.LabelFrame(right, text="Sensor Status  (0x201)", padx=6, pady=6)
+        self._frm_status.pack(fill="x", pady=(8, 0))
+        st_frame = self._frm_status
 
         status_fields = [
             ("NVMReadStatus",  STATUS),
@@ -269,7 +263,17 @@ class App(tk.Tk):
 
     def _on_apply_sensor_id(self):
         """Current Sensor ID を反映し、送受信 CAN ID を更新する。"""
-        sid = self._cur_sensor_id_var.get()
+        try:
+            sid = int(self._cur_sensor_id_var.get())
+        except (ValueError, tk.TclError):
+            self._spn_sensor_id.configure(bg="#FF9999")
+            messagebox.showerror("入力エラー", "Sensor ID は整数で入力してください（0〜7）")
+            return
+        if sid < 0 or sid > 7:
+            self._spn_sensor_id.configure(bg="#FF9999")
+            messagebox.showerror("入力エラー", f"Sensor ID は 0〜7 の範囲で入力してください（入力値: {sid}）")
+            return
+        self._spn_sensor_id.configure(bg="white")
         self._can.set_sensor_id(sid)
         self._refresh_can_id_display()
 
@@ -277,11 +281,10 @@ class App(tk.Tk):
         """送受信 CAN ID に関わるすべての表示を更新する。"""
         cfg_id   = self._can.cfg_id
         state_id = self._can.state_id
-        # トップバーのラベル
-        self._lbl_send_can_id.configure(text=f"0x{cfg_id:03X}")
-        self._lbl_recv_can_id.configure(text=f"0x{state_id:03X}")
         # Send Config パネルのタイトル
         self._frm_send.configure(text=f"Send Config  (CAN 0x{cfg_id:03X})")
+        # Send ボタンのテキスト
+        self._btn_send.configure(text=f"Send 0x{cfg_id:03X}")
         # Config Comparison パネルのタイトルとヘッダー
         self._frm_cmp.configure(
             text=f"Config Comparison  (0x{cfg_id:03X} sent vs 0x{state_id:03X} received)")
@@ -290,19 +293,27 @@ class App(tk.Tk):
         # hex ラベルタイトル
         self._lbl_hex200_title.configure(text=f"CAN 0x{cfg_id:03X} hex (cansend用):")
         self._lbl_hex201_title.configure(text=f"CAN 0x{state_id:03X} hex (candump用):")
+        # Sensor Status パネルのタイトル
+        self._frm_status.configure(text=f"Sensor Status  (0x{state_id:03X})")
         # cansend プレビューも更新
         self._update_hex_preview()
 
     def _on_connect(self):
         iface = self._iface_var.get().strip()
+        if not iface:
+            self._entry_iface.configure(bg="#FF9999")
+            messagebox.showerror("入力エラー", "CAN インターフェース名を入力してください")
+            return
         try:
             self._can.channel = iface
             self._can.connect()
             self._can.register_state_callback(self._on_state_received)
+            self._entry_iface.configure(bg="white")
             self._lbl_status.configure(text="● Connected", fg="green")
             self._btn_connect.configure(state="disabled")
             self._btn_disconnect.configure(state="normal")
         except Exception as e:
+            self._entry_iface.configure(bg="#FF9999")
             messagebox.showerror("Connection Error", str(e))
 
     def _on_disconnect(self):
@@ -311,7 +322,64 @@ class App(tk.Tk):
         self._btn_connect.configure(state="normal")
         self._btn_disconnect.configure(state="disabled")
 
+    def _validate_send_inputs(self) -> bool:
+        """送信前の入力値バリデーション。問題があれば該当ウィジェットを赤くして False を返す。"""
+        ok = True
+
+        # MaxDistance: 有効時は 196〜1200 の偶数
+        w_dist = self._value_widgets["MaxDistance"]
+        if self._valid_vars["MaxDistance"].get():
+            try:
+                v = int(self._value_vars["MaxDistance"].get())
+            except (ValueError, tk.TclError):
+                v = None
+            if v is None:
+                w_dist.configure(bg="#FF9999")
+                messagebox.showerror("入力エラー", "MaxDistance は整数で入力してください（196〜1200、偶数）")
+                ok = False
+            elif v < 196 or v > 1200:
+                w_dist.configure(bg="#FF9999")
+                messagebox.showerror("入力エラー",
+                    f"MaxDistance は 196〜1200 m の範囲で入力してください（入力値: {v}）")
+                ok = False
+            elif v % 2 != 0:
+                w_dist.configure(bg="#FF9999")
+                messagebox.showerror("入力エラー",
+                    f"MaxDistance は偶数（2m 単位）で入力してください（入力値: {v}）")
+                ok = False
+            else:
+                w_dist.configure(bg="white")
+        else:
+            w_dist.configure(bg="white")
+
+        # SensorID: 有効時は 0〜7 の範囲
+        w_sid = self._value_widgets["SensorID"]
+        if self._valid_vars["SensorID"].get():
+            try:
+                v = int(self._value_vars["SensorID"].get())
+            except (ValueError, tk.TclError):
+                v = None
+            if v is None:
+                w_sid.configure(bg="#FF9999")
+                if ok:
+                    messagebox.showerror("入力エラー", "SensorID は整数で入力してください（0〜7）")
+                ok = False
+            elif v < 0 or v > 7:
+                w_sid.configure(bg="#FF9999")
+                if ok:
+                    messagebox.showerror("入力エラー",
+                        f"SensorID は 0〜7 の範囲で入力してください（入力値: {v}）")
+                ok = False
+            else:
+                w_sid.configure(bg="white")
+        else:
+            w_sid.configure(bg="white")
+
+        return ok
+
     def _on_send(self):
+        if not self._validate_send_inputs():
+            return
         cfg = self._read_cfg_from_ui()
         data = encode_can200(cfg)
         # エンコード→デコードして実際に送出される値を保存（解像度丸めを反映）
@@ -495,7 +563,8 @@ class App(tk.Tk):
     def _save_settings(self):
         cfg = self._read_cfg_from_ui()
         d = cfg_to_dict(cfg)
-        d["can_interface"] = self._iface_var.get()
+        d["can_interface"]    = self._iface_var.get()
+        d["current_sensor_id"] = self._cur_sensor_id_var.get()
         with open(SETTINGS_FILE, "w") as f:
             json.dump(d, f, indent=2)
         messagebox.showinfo("Saved", f"Settings saved to\n{SETTINGS_FILE}")
@@ -512,6 +581,9 @@ class App(tk.Tk):
 
         if "can_interface" in d:
             self._iface_var.set(d["can_interface"])
+        if "current_sensor_id" in d:
+            self._cur_sensor_id_var.set(int(d["current_sensor_id"]))
+            self._on_apply_sensor_id()
 
         cfg = dict_to_cfg(d)
         self._apply_cfg_to_ui(cfg)

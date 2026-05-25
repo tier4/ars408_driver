@@ -200,12 +200,28 @@ class RadarSimulator:
         cfg = decode_can200(data)
 
         with self._lock:
-            self._state = apply_cfg_to_state(self._state, cfg)
-            raw201 = state_to_can201(self._state)
+            old_sensor_id = self._state.SensorID
+            self._state   = apply_cfg_to_state(self._state, cfg)
+            new_sensor_id = self._state.SensorID
+            raw201        = state_to_can201(self._state)
 
         hex_201 = " ".join(f"{b:02X}" for b in raw201)
-        print(f"[Simulator] #201 送信: {hex_201}\n")
+        print(f"[Simulator] #201 送信: {hex_201}")
         self._send_201(raw201)
+
+        # SensorID が変わった場合、レーダー再起動をシミュレーション
+        if cfg.SensorID_valid and new_sensor_id != old_sensor_id:
+            print(f"\n[Simulator] ⚠  SensorID が {old_sensor_id} → {new_sensor_id} に変更されました")
+            print(f"[Simulator] 再起動をシミュレーションします... (1秒待機)")
+            time.sleep(1.0)
+            self._cfg_id   = 0x200 + new_sensor_id * 0x10
+            self._state_id = 0x201 + new_sensor_id * 0x10
+            print(f"[Simulator] 再起動完了")
+            print(f"[Simulator]   受信 CAN ID: 0x{self._cfg_id:03X}")
+            print(f"[Simulator]   送信 CAN ID: 0x{self._state_id:03X}")
+            print(f"[Simulator] GUI の Current Sensor ID を {new_sensor_id} に変更して Apply してください\n")
+        else:
+            print()
 
     def _tx_loop(self):
         """定期的に #201 を送信する（実機レーダーの定期送信に相当）。"""
