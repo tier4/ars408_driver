@@ -260,8 +260,7 @@ class App(tk.Tk):
         self._last_cfg = decode_can200(data)
         self._cfg_sent = True
         self._state_received_after_send = False
-        hex_str = " ".join(f"{b:02X}" for b in data)
-        self._lbl_hex200.configure(text=hex_str)
+        self._update_hex_preview()
         self._update_send_banner()
         # 比較列を「未設定→待機中」に更新
         self._reset_compare_to_waiting()
@@ -286,7 +285,7 @@ class App(tk.Tk):
             )
         elif not self._state_received_after_send:
             self._lbl_send_state.configure(
-                text="◑ #200 送信済 — #201 待ち（Read #201 を実行してください）",
+                text="◑ #200 送信済 — #201 自動受信待ち（レーダーを再起動してください）",
                 bg="#888800",
             )
         else:
