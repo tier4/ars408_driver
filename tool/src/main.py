@@ -11,7 +11,7 @@ from tkinter import messagebox, ttk
 from can_interface import CanInterface
 from radar_cfg import (
     OUTPUT_TYPE_OPTS, RADAR_POWER_OPTS, RCS_THRESH_OPTS, SORT_INDEX_OPTS,
-    CFG_TO_STATE_MAP, RadarCfg, cfg_to_dict, dict_to_cfg, encode_can200, decode_can200,
+    RadarCfg, cfg_to_dict, dict_to_cfg, encode_can200, decode_can200,
 )
 from radar_state import (
     ERROR_FLAG, MOTION_RX, OUTPUT_TYPE, RADAR_POWER, RCS_THRESH, SORT_INDEX,
@@ -74,6 +74,27 @@ class App(tk.Tk):
         self._lbl_status = tk.Label(top, text="● Disconnected", fg="red")
         self._lbl_status.pack(side="left", **pad)
 
+        ttk.Separator(top, orient="vertical").pack(side="left", fill="y", padx=8)
+
+        tk.Label(top, text="Current Sensor ID:").pack(side="left", **pad)
+        self._cur_sensor_id_var = tk.IntVar(value=0)
+        tk.Spinbox(top, from_=0, to=7, increment=1,
+                   textvariable=self._cur_sensor_id_var,
+                   width=3).pack(side="left", **pad)
+        tk.Button(top, text="Apply", width=6,
+                  command=self._on_apply_sensor_id).pack(side="left", **pad)
+
+        ttk.Separator(top, orient="vertical").pack(side="left", fill="y", padx=8)
+
+        tk.Label(top, text="Send CAN ID:").pack(side="left", **pad)
+        self._lbl_send_can_id = tk.Label(top, text="0x200",
+                                          fg="blue", font=("Courier", 9, "bold"), width=6)
+        self._lbl_send_can_id.pack(side="left", **pad)
+        tk.Label(top, text="Recv CAN ID:").pack(side="left", **pad)
+        self._lbl_recv_can_id = tk.Label(top, text="0x201",
+                                          fg="darkgreen", font=("Courier", 9, "bold"), width=6)
+        self._lbl_recv_can_id.pack(side="left", **pad)
+
         # === Main: left (send) / right (compare + sensor) ===
         main = tk.Frame(self)
         main.pack(fill="both", padx=8, pady=8)
@@ -83,8 +104,9 @@ class App(tk.Tk):
 
     # --- Left: send (#200) ---
     def _build_send_panel(self, parent):
-        frame = tk.LabelFrame(parent, text="Send Config  (CAN #200)", padx=6, pady=6)
-        frame.pack(side="left", fill="y", padx=(0, 6))
+        self._frm_send = tk.LabelFrame(parent, text="Send Config  (CAN 0x200)", padx=6, pady=6)
+        self._frm_send.pack(side="left", fill="y", padx=(0, 6))
+        frame = self._frm_send
 
         self._valid_vars: dict[str, tk.BooleanVar] = {}
         self._value_widgets: dict[str, tk.Widget] = {}
@@ -150,8 +172,8 @@ class App(tk.Tk):
                   command=self._load_settings).pack(side="left", padx=4)
 
         # Hex preview (#200)
-        tk.Label(frame, text="CAN#200 hex (cansend用):").grid(
-            row=fixed_row+2, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self._lbl_hex200_title = tk.Label(frame, text="CAN 0x200 hex (cansend用):")
+        self._lbl_hex200_title.grid(row=fixed_row+2, column=0, columnspan=3, sticky="w", pady=(8, 0))
         self._lbl_hex200 = tk.Label(frame, text="--", font=("Courier", 10), anchor="w")
         self._lbl_hex200.grid(row=fixed_row+3, column=0, columnspan=3, sticky="w")
 
@@ -161,9 +183,11 @@ class App(tk.Tk):
         right.pack(side="left", fill="both", expand=True)
 
         # === Compare table ===
-        cmp_frame = tk.LabelFrame(right, text="Config Comparison  (#200 sent vs #201 received)",
-                                  padx=6, pady=6)
-        cmp_frame.pack(fill="x")
+        self._frm_cmp = tk.LabelFrame(right,
+                                      text="Config Comparison  (0x200 sent vs 0x201 received)",
+                                      padx=6, pady=6)
+        self._frm_cmp.pack(fill="x")
+        cmp_frame = self._frm_cmp
 
         # 状態バナー
         self._lbl_send_state = tk.Label(
@@ -174,10 +198,17 @@ class App(tk.Tk):
         )
         self._lbl_send_state.grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 4))
 
-        headers = ["Signal", "Sent (#200)", "Received (#201)", "Match"]
-        for col, h in enumerate(headers):
-            tk.Label(cmp_frame, text=h, font=("", 9, "bold"),
-                     width=[18, 14, 16, 6][col], anchor="w").grid(row=1, column=col, padx=2)
+        self._lbl_cmp_hdr_sent = tk.Label(cmp_frame, text="Sent (0x200)",
+                                           font=("", 9, "bold"), width=14, anchor="w")
+        self._lbl_cmp_hdr_recv = tk.Label(cmp_frame, text="Received (0x201)",
+                                           font=("", 9, "bold"), width=16, anchor="w")
+        headers_static = ["Signal", "Match"]
+        tk.Label(cmp_frame, text="Signal", font=("", 9, "bold"),
+                 width=18, anchor="w").grid(row=1, column=0, padx=2)
+        self._lbl_cmp_hdr_sent.grid(row=1, column=1, padx=2)
+        self._lbl_cmp_hdr_recv.grid(row=1, column=2, padx=2)
+        tk.Label(cmp_frame, text="Match", font=("", 9, "bold"),
+                 width=6, anchor="w").grid(row=1, column=3, padx=2)
 
         self._cmp_rows: dict[str, list[tk.Label]] = {}
         for i, (field, fmt, _) in enumerate(COMPARE_FIELDS, start=2):
@@ -196,7 +227,8 @@ class App(tk.Tk):
         hex_frame = tk.Frame(cmp_frame)
         hex_frame.grid(row=len(COMPARE_FIELDS)+2, column=0, columnspan=4,
                        sticky="w", pady=(6, 2))
-        tk.Label(hex_frame, text="CAN#201 hex (candump用):").pack(side="left", padx=(2, 6))
+        self._lbl_hex201_title = tk.Label(hex_frame, text="CAN 0x201 hex (candump用):")
+        self._lbl_hex201_title.pack(side="left", padx=(2, 6))
         self._lbl_hex201 = tk.Label(hex_frame, text="--",
                                     font=("Courier", 10), anchor="w",
                                     relief="sunken", bd=1, width=28)
@@ -235,6 +267,32 @@ class App(tk.Tk):
             w.configure(state="normal" if enabled else "disabled")
         self._update_hex_preview()
 
+    def _on_apply_sensor_id(self):
+        """Current Sensor ID を反映し、送受信 CAN ID を更新する。"""
+        sid = self._cur_sensor_id_var.get()
+        self._can.set_sensor_id(sid)
+        self._refresh_can_id_display()
+
+    def _refresh_can_id_display(self):
+        """送受信 CAN ID に関わるすべての表示を更新する。"""
+        cfg_id   = self._can.cfg_id
+        state_id = self._can.state_id
+        # トップバーのラベル
+        self._lbl_send_can_id.configure(text=f"0x{cfg_id:03X}")
+        self._lbl_recv_can_id.configure(text=f"0x{state_id:03X}")
+        # Send Config パネルのタイトル
+        self._frm_send.configure(text=f"Send Config  (CAN 0x{cfg_id:03X})")
+        # Config Comparison パネルのタイトルとヘッダー
+        self._frm_cmp.configure(
+            text=f"Config Comparison  (0x{cfg_id:03X} sent vs 0x{state_id:03X} received)")
+        self._lbl_cmp_hdr_sent.configure(text=f"Sent (0x{cfg_id:03X})")
+        self._lbl_cmp_hdr_recv.configure(text=f"Received (0x{state_id:03X})")
+        # hex ラベルタイトル
+        self._lbl_hex200_title.configure(text=f"CAN 0x{cfg_id:03X} hex (cansend用):")
+        self._lbl_hex201_title.configure(text=f"CAN 0x{state_id:03X} hex (candump用):")
+        # cansend プレビューも更新
+        self._update_hex_preview()
+
     def _on_connect(self):
         iface = self._iface_var.get().strip()
         try:
@@ -261,7 +319,13 @@ class App(tk.Tk):
         self._cfg_sent = True
         self._state_received_after_send = False
         hex_str = " ".join(f"{b:02X}" for b in data)
-        self._update_hex_preview()
+
+        # SensorID を変更する場合、再起動後の受信 CAN ID を自動更新
+        if self._last_cfg.SensorID_valid:
+            new_state_id = 0x201 + self._last_cfg.SensorID * 0x10
+            self._can.set_state_id(new_state_id)
+
+        self._refresh_can_id_display()
         self._update_send_banner()
         # 比較列を「未設定→待機中」に更新
         self._reset_compare_to_waiting()
@@ -424,8 +488,9 @@ class App(tk.Tk):
         iface = self._iface_var.get().strip() or "can0"
         hex_bytes = " ".join(f"{b:02X}" for b in data)
         hex_nospc = "".join(f"{b:02X}" for b in data)
+        cfg_id = self._can.cfg_id
         self._lbl_hex200.configure(
-            text=f"{hex_bytes}   cansend: {iface} 200#{hex_nospc}")
+            text=f"{hex_bytes}   cansend: {iface} {cfg_id:03X}#{hex_nospc}")
 
     def _save_settings(self):
         cfg = self._read_cfg_from_ui()

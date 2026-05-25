@@ -147,13 +147,16 @@ def apply_cfg_to_state(state: RadarState, cfg: RadarCfg) -> RadarState:
 
 
 class RadarSimulator:
-    def __init__(self, channel: str = "vcan0", interval: float = 0.5):
-        self.channel  = channel
-        self.interval = interval
-        self._state   = DEFAULT_STATE
-        self._lock    = threading.Lock()
-        self._bus     = None
-        self._running = False
+    def __init__(self, channel: str = "vcan0", interval: float = 0.5, sensor_id: int = 0):
+        self.channel   = channel
+        self.interval  = interval
+        self.sensor_id = sensor_id
+        self._cfg_id   = 0x200 + sensor_id * 0x10   # 受信する CAN ID (#200 系)
+        self._state_id = 0x201 + sensor_id * 0x10   # 送信する CAN ID (#201 系)
+        self._state    = DEFAULT_STATE
+        self._lock     = threading.Lock()
+        self._bus      = None
+        self._running  = False
 
     def start(self):
         if not CAN_AVAILABLE:
@@ -169,7 +172,8 @@ class RadarSimulator:
             self._tx_thread = threading.Thread(target=self._tx_loop, daemon=True)
             self._tx_thread.start()
 
-        print(f"[Simulator] 起動しました  channel={self.channel}  interval={self.interval}s")
+        print(f"[Simulator] 起動しました  channel={self.channel}  sensor_id={self.sensor_id}  interval={self.interval}s")
+        print(f"[Simulator] 受信 CAN ID: 0x{self._cfg_id:03X}  送信 CAN ID: 0x{self._state_id:03X}")
         print(f"[Simulator] CAN#200 待受中 ... (Ctrl+C で終了)\n")
 
     def stop(self):
@@ -183,7 +187,7 @@ class RadarSimulator:
                 msg = self._bus.recv(timeout=1.0)
                 if msg is None:
                     continue
-                if msg.arbitration_id == 0x200 and len(msg.data) >= 8:
+                if msg.arbitration_id == self._cfg_id and len(msg.data) >= 8:
                     self._on_received_200(bytes(msg.data))
             except Exception as e:
                 if self._running:
@@ -214,7 +218,7 @@ class RadarSimulator:
     def _send_201(self, data: bytes):
         try:
             msg = can.Message(
-                arbitration_id=0x201,
+                arbitration_id=self._state_id,
                 data=data,
                 is_extended_id=False,
             )
@@ -225,12 +229,14 @@ class RadarSimulator:
 
 def main():
     parser = argparse.ArgumentParser(description="ARS408 Radar Simulator")
-    parser.add_argument("--channel",  default="vcan0", help="CAN インターフェース名")
-    parser.add_argument("--interval", type=float, default=0.5,
+    parser.add_argument("--channel",   default="vcan0", help="CAN インターフェース名")
+    parser.add_argument("--interval",  type=float, default=0.5,
                         help="#201 定期送信間隔[秒] (0=受信時のみ)")
+    parser.add_argument("--sensor-id", type=int, default=0, dest="sensor_id",
+                        help="シミュレートするレーダーの Sensor ID (0-7, default=0)")
     args = parser.parse_args()
 
-    sim = RadarSimulator(channel=args.channel, interval=args.interval)
+    sim = RadarSimulator(channel=args.channel, interval=args.interval, sensor_id=args.sensor_id)
     sim.start()
 
     try:
