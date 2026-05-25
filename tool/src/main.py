@@ -260,6 +260,7 @@ class App(tk.Tk):
         self._last_cfg = decode_can200(data)
         self._cfg_sent = True
         self._state_received_after_send = False
+        hex_str = " ".join(f"{b:02X}" for b in data)
         self._update_hex_preview()
         self._update_send_banner()
         # 比較列を「未設定→待機中」に更新
