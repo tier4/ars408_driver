@@ -7,7 +7,7 @@ Continental ARS408 レーダーの設定を CAN バス経由で変更し、正�
 ## ファイル構成
 
 ```
-cfg2state/
+tools/
 ├── src/
 │   ├── main.py               # GUI（設定送信・比較表示）
 │   ├── radar_simulator.py    # レーダー本体の代役シミュレーター
