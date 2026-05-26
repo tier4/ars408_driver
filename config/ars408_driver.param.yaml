@@ -29,7 +29,6 @@
       sort_index: "by_range"       # no_sort | by_range | by_rcs
       radar_power: "minus_3db"     # minus_3db | minus_6db | minus_9db only (standard not allowed: Japan radio regulations)
       store_in_nvm: false
-      update_sensor_id: false
       rcs_threshold: "normal"      # normal | high_sensitivity
       ctrl_relay: false
 

@@ -88,7 +88,7 @@ bool RadarStateMatchesConfig(
   const RadarState & state, const can_encoder::RadarCfgParams & expected, const uint8_t node_radar_id,
   std::string * mismatch_detail)
 {
-  const uint8_t expected_sensor_id = expected.update_sensor_id ? expected.sensor_id : node_radar_id;
+  const uint8_t expected_sensor_id = node_radar_id;
   if (!Check(
       state.SensorID == expected_sensor_id, "sensor_id", mismatch_detail,
       std::to_string(expected_sensor_id), std::to_string(state.SensorID)))

@@ -587,9 +587,7 @@ ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams(
 {
   ars408::can_encoder::RadarCfgParams params;
 
-  const bool update_sensor_id =
-    declare_parameter<bool>("radar_cfg.update_sensor_id", false);
-  params.update_sensor_id = update_sensor_id;
+  params.update_sensor_id = false;
   params.update_max_distance = true;
   params.update_radar_power = true;
   params.update_output_type = true;
