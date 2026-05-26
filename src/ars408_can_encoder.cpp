@@ -160,5 +160,23 @@ std::array<uint8_t, 8> EncodeRadarCfg(const RadarCfgParams & params)
   return data;
 }
 
+std::array<uint8_t, 8> EncodeFilterCfg(const filter_signals::FilterCfgEntry & entry)
+{
+  std::array<uint8_t, 8> data{};
+
+  packSignalIntel(data, 1, 1, 1u);
+  packSignalIntel(data, 2, 1, entry.active ? 1u : 0u);
+  packSignalIntel(data, 3, 4, filter_signals::FilterIndexToRaw(entry.index));
+  packSignalIntel(data, 7, 1, entry.for_objects ? 1u : 0u);
+
+  const uint8_t value_bits = filter_signals::FilterIndexUses13BitRange(entry.index) ? 13u : 12u;
+  if (!filter_signals::FilterIndexIgnoresMin(entry.index)) {
+    packSignalIntel(data, 16, value_bits, filter_signals::EncodeRawMin(entry));
+  }
+  packSignalIntel(data, 32, value_bits, filter_signals::EncodeRawMax(entry));
+
+  return data;
+}
+
 }  // namespace can_encoder
 }  // namespace ars408

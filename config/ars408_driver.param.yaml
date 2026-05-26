@@ -32,3 +32,45 @@
       update_sensor_id: false
       rcs_threshold: "normal"      # normal | high_sensitivity
       ctrl_relay: false
+
+    # FilterCfg (0x202) — nested under filter_cfg (see README)
+    filter_cfg:
+      send_on_startup: false
+      startup_delay_sec: 0.5
+      inter_send_delay_sec: 0.05
+      retry_interval_sec: 2.0
+      criteria: {}
+
+    # Example: deactivate distance filter on the radar
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: false
+    #       target: objects
+
+    # Example: enable pass-through filters (add keys under criteria; no separate index list)
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: true
+    #       target: objects
+    #       min: 0.0
+    #       max: 260.0
+    #     nof_obj:
+    #       active: true
+    #       target: objects
+    #       max: 64.0
+
+    # Example: mixed — one criterion off, one on with range
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: false
+    #       target: objects
+    #     nof_obj:
+    #       active: true
+    #       target: objects
+    #       max: 64.0

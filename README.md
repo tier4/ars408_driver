@@ -49,8 +49,9 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
 
 - `~/output/to_can_bus` (remap to `to_can_bus` for `socket_can_bridge`)
   - RadarCfg (0x200) at startup when `publish_radar_cfg_on_startup` is true
+  - FilterCfg (0x202) sequence when `filter_cfg.send_on_startup` is true (after RadarCfg is verified)
   - Motion CAN frames (0x300 Speed Information, 0x301 Yaw Rate Information)
-- `/diagnostics` — radar state (`0x201`) and firmware version (`0x700`) when enabled
+- `/diagnostics` — radar state (`0x201`), filter cfg (`0x203`/`0x204`), and firmware version (`0x700`) when enabled
 - `output/objects`
   - `RadarTrack`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTrack.msg>
   - If you want to visualize, you should choose `RadarTrack` and visualize in rviz using [radar_tracks_msgs_converter](https://github.com/autowarefoundation/autoware.universe/tree/main/perception/radar_tracks_msgs_converter) with autoware.universe.
@@ -91,6 +92,12 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
   - Publish `ars408_radar_state` on `/diagnostics` from 0x201 / 0x700.
 - `radar_cfg.*` (nested, see `config/ars408_driver.param.yaml`)
   - `max_distance_m`, `output_type` (`none` | `objects` | `clusters`), `send_quality`, `send_ext_info`, `sort_index` (`no_sort` | `by_range` | `by_rcs`), `radar_power` (`minus_3db` | `minus_6db` | `minus_9db`; `standard` not allowed for Japan radio regulations), `store_in_nvm`, `rcs_threshold` (`normal` | `high_sensitivity`), `ctrl_relay`, `update_sensor_id`.
+- **`filter_cfg`** (nested block in `config/ars408_driver.param.yaml`):
+  1. **`filter_cfg.send_on_startup`** — send FilterCfg (0x202) after RadarCfg is verified (`false` = leave radar filter state unchanged).
+  2. **`filter_cfg.criteria.<criterion>.active`** — enable (`true`) or disable (`false`) that criterion on the radar. Criterion keys are discovered automatically (no separate index list).
+  3. **`filter_cfg.criteria.<criterion>.target`** (`objects` | `clusters`), **`min` / `max`** — pass-through range when `active` is true (`min` ignored for `nof_obj` and `class`). Optional **`index`** overrides the criterion id (default: YAML key name).
+- Timing: `filter_cfg.startup_delay_sec`, `filter_cfg.inter_send_delay_sec`, `filter_cfg.retry_interval_sec`. Does not gate `RadarTracks` output (unlike RadarCfg).
+- Criterion key names: `distance`, `nof_obj`, `pos_x`, `azimuth`, `rcs`, etc. (or set `index` to `0`–`15` / `0xA`).
 - `can_receive_check_rate_hz`
   - The parameter specifies the check/poll rate of the CAN receive status [Hz].
 - `can_receive_check_timeout_sec`

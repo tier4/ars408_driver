@@ -16,6 +16,7 @@
 #define ARS408_ROS__ARS408_CAN_PARSER_HPP_
 
 #include "ars408_ros/ars408_commands.hpp"
+#include "ars408_ros/ars408_filter_signals.hpp"
 #include "ars408_ros/ars408_object.hpp"
 
 #include <array>
@@ -53,6 +54,11 @@ struct VersionId
 };
 
 VersionId ParseVersionId(const std::array<uint8_t, 8> & in_can_data);
+
+filter_signals::FilterStateHeader ParseFilterStateHeader(
+  const std::array<uint8_t, 8> & in_can_data);
+
+filter_signals::FilterStateCfg ParseFilterStateCfg(const std::array<uint8_t, 8> & in_can_data);
 
 }  // namespace can_parser
 }  // namespace ars408

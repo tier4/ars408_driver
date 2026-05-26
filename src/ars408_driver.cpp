@@ -136,6 +136,42 @@ void Ars408Driver::ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_dat
   valid_version_id_ = true;
 }
 
+void Ars408Driver::ParseFilterStateHeaderFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  filter_state_header_ = can_parser::ParseFilterStateHeader(in_can_data);
+  valid_filter_state_header_ = true;
+}
+
+void Ars408Driver::ParseFilterStateCfgFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  const auto state = can_parser::ParseFilterStateCfg(in_can_data);
+  for (auto & existing : filter_state_cfgs_) {
+    if (existing.index == state.index && existing.for_objects == state.for_objects) {
+      existing = state;
+      return;
+    }
+  }
+  filter_state_cfgs_.push_back(state);
+}
+
+bool Ars408Driver::GetFilterStateHeader(filter_signals::FilterStateHeader & out_header)
+{
+  if (!valid_filter_state_header_) {
+    return false;
+  }
+  out_header = filter_state_header_;
+  return true;
+}
+
+bool Ars408Driver::GetFilterStateCfgs(std::vector<filter_signals::FilterStateCfg> & out_states)
+{
+  if (filter_state_cfgs_.empty()) {
+    return false;
+  }
+  out_states = filter_state_cfgs_;
+  return true;
+}
+
 void Ars408Driver::RegisterDetectedObjectsCallback(
   std::function<void(
     const std::unordered_map<uint8_t, ars408::RadarObject> &,
@@ -259,6 +295,30 @@ std::string Ars408Driver::Parse(
     case ars408::VERSION_ID_07:
       if (can_parser::HasMinimumDlc(in_data_length, ars408::VERSION_ID_BYTES)) {
         ParseVersionIdFrame(in_can_data);
+      }
+      break;
+    case ars408::FILTER_STATE_HEADER_00:
+    case ars408::FILTER_STATE_HEADER_01:
+    case ars408::FILTER_STATE_HEADER_02:
+    case ars408::FILTER_STATE_HEADER_03:
+    case ars408::FILTER_STATE_HEADER_04:
+    case ars408::FILTER_STATE_HEADER_05:
+    case ars408::FILTER_STATE_HEADER_06:
+    case ars408::FILTER_STATE_HEADER_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::FILTER_STATE_HEADER_BYTES)) {
+        ParseFilterStateHeaderFrame(in_can_data);
+      }
+      break;
+    case ars408::FILTER_STATE_CFG_00:
+    case ars408::FILTER_STATE_CFG_01:
+    case ars408::FILTER_STATE_CFG_02:
+    case ars408::FILTER_STATE_CFG_03:
+    case ars408::FILTER_STATE_CFG_04:
+    case ars408::FILTER_STATE_CFG_05:
+    case ars408::FILTER_STATE_CFG_06:
+    case ars408::FILTER_STATE_CFG_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::FILTER_STATE_CFG_BYTES)) {
+        ParseFilterStateCfgFrame(in_can_data);
       }
       break;
     default:

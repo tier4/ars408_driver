@@ -17,6 +17,7 @@
 
 #include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_driver.hpp"
+#include "ars408_ros/ars408_filter_signals.hpp"
 #include "ars408_ros/ars408_radar_msgs_conversion.hpp"
 #include "can_msgs/msg/frame.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -77,11 +78,23 @@ class PeContinentalArs408Node : public rclcpp::Node
   std::optional<rclcpp::Time> last_radar_cfg_send_time_;
   std::string radar_cfg_mismatch_detail_;
 
+  bool send_filter_cfg_on_startup_{false};
+  bool filter_cfg_applied_{true};
+  double filter_cfg_startup_delay_sec_;
+  double filter_cfg_inter_send_delay_sec_;
+  double filter_cfg_retry_interval_sec_;
+  std::vector<ars408::filter_signals::FilterCfgEntry> filter_cfg_entries_;
+  size_t filter_cfg_send_index_{0};
+  std::optional<rclcpp::Time> last_filter_cfg_send_time_;
+  std::optional<rclcpp::Time> filter_cfg_sequence_start_time_;
+  std::string filter_cfg_mismatch_detail_;
+
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
   rclcpp::TimerBase::SharedPtr can_receive_check_timer_;
   rclcpp::TimerBase::SharedPtr motion_publish_timer_;
   rclcpp::TimerBase::SharedPtr radar_cfg_startup_timer_;
+  rclcpp::TimerBase::SharedPtr filter_cfg_startup_timer_;
   std::optional<rclcpp::Time> can_receive_last_time_;
   rclcpp::Time last_warn_time_;
 
@@ -94,12 +107,18 @@ class PeContinentalArs408Node : public rclcpp::Node
   void PublishMotionCanFrames();
   void PublishRadarCfg();
   void UpdateRadarCfgSync();
+  void PublishFilterCfgEntry(const ars408::filter_signals::FilterCfgEntry & entry);
+  void PublishFilterCfgSequenceStep();
+  void UpdateFilterCfgSync();
   void OnCanReceiveCheck();
   void PublishRadarCfgDiagnostics();
+  void PublishFilterCfgDiagnostics();
   void PublishRadarStateDiagnostics();
   void GenerateUUIDTable();
   void SetParameter();
   ars408::can_encoder::RadarCfgParams LoadRadarCfgParams();
+  std::vector<ars408::filter_signals::FilterCfgEntry> LoadFilterCfgEntries();
+  std::vector<std::string> ListFilterCriteriaNames() const;
 
   radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
   radar_msgs::msg::RadarReturn ConvertRadarObjectToRadarReturn(

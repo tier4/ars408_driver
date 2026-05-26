@@ -15,6 +15,8 @@
 #ifndef ARS408_ROS__ARS408_CAN_ENCODER_HPP_
 #define ARS408_ROS__ARS408_CAN_ENCODER_HPP_
 
+#include "ars408_ros/ars408_filter_signals.hpp"
+
 #include <array>
 #include <cstdint>
 #include <string>
@@ -97,6 +99,9 @@ std::array<uint8_t, 8> EncodeSpeedInformation(float speed_mps, SpeedDirection di
 
 /// YawRateInformation (0x301): yaw rate [deg/s].
 std::array<uint8_t, 8> EncodeYawRateInformation(float yaw_rate_deg_s);
+
+/// FilterCfg (0x202) for one filter criterion.
+std::array<uint8_t, 8> EncodeFilterCfg(const filter_signals::FilterCfgEntry & entry);
 
 }  // namespace can_encoder
 }  // namespace ars408

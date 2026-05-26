@@ -18,6 +18,7 @@
 #include "ars408_ros/ars408_can_parser.hpp"
 #include "ars408_ros/ars408_commands.hpp"
 #include "ars408_ros/ars408_constants.hpp"
+#include "ars408_ros/ars408_filter_signals.hpp"
 #include "ars408_ros/ars408_object.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -37,7 +38,10 @@ private:
 
   bool valid_radar_state_{false};
   bool valid_version_id_{false};
+  bool valid_filter_state_header_{false};
   bool sequential_publish_{false};
+  filter_signals::FilterStateHeader filter_state_header_{};
+  std::vector<filter_signals::FilterStateCfg> filter_state_cfgs_{};
   ars408::RadarState current_radar_state_{};
   ars408::can_parser::VersionId current_version_id_{};
   ars408::Obj_0_Status current_objects_status_{};
@@ -114,6 +118,10 @@ private:
 
   void ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_data);
 
+  void ParseFilterStateHeaderFrame(const std::array<uint8_t, 8> & in_can_data);
+
+  void ParseFilterStateCfgFrame(const std::array<uint8_t, 8> & in_can_data);
+
 public:
   /**
    * Sets the hardware Sensor ID (0–7) that this driver instance handles.
@@ -134,6 +142,10 @@ public:
   bool GetCurrentRadarState(ars408::RadarState & out_current_state);
 
   bool GetVersionId(ars408::can_parser::VersionId & out_version_id);
+
+  bool GetFilterStateHeader(filter_signals::FilterStateHeader & out_header);
+
+  bool GetFilterStateCfgs(std::vector<filter_signals::FilterStateCfg> & out_states);
 
   /**
    * Register the function to be called once all the Radar objects are ready.

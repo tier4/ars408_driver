@@ -17,11 +17,16 @@
 #include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_can_parser.hpp"
 #include "ars408_ros/ars408_constants.hpp"
+#include "ars408_ros/ars408_filter_cfg_verify.hpp"
+#include "ars408_ros/ars408_filter_signals.hpp"
 #include "ars408_ros/ars408_radar_cfg_verify.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -67,6 +72,18 @@ ars408::can_encoder::RcsThreshold ParseRcsThreshold(const std::string & value)
     return ars408::can_encoder::RcsThreshold::HIGH_SENSITIVITY;
   }
   throw std::invalid_argument("radar_cfg.rcs_threshold must be normal or high_sensitivity");
+}
+
+bool ParseFilterTarget(const std::string & value)
+{
+  if (value == "objects") {
+    return true;
+  }
+  if (value == "clusters") {
+    return false;
+  }
+  throw std::invalid_argument(
+    "filter_cfg.criteria.<name>.target must be \"objects\" or \"clusters\"");
 }
 
 }  // namespace
@@ -204,10 +221,19 @@ void PeContinentalArs408Node::UpdateRadarCfgSync()
     if (ars408::radar_cfg_verify::RadarStateMatchesConfig(
         state, radar_cfg_params_, radar_id_, &detail))
     {
+      if (!radar_cfg_applied_) {
+        RCLCPP_INFO(
+          get_logger(), "RadarCfg verified on sensor ID %d (matches YAML)", radar_id_);
+      }
       radar_cfg_applied_ = true;
       radar_cfg_mismatch_detail_.clear();
-      RCLCPP_INFO(
-        get_logger(), "RadarCfg verified on sensor ID %d (matches YAML)", radar_id_);
+      if (send_filter_cfg_on_startup_ && !filter_cfg_applied_ &&
+        !filter_cfg_sequence_start_time_.has_value())
+      {
+        filter_cfg_sequence_start_time_ = this->now();
+        filter_cfg_send_index_ = 0;
+        last_filter_cfg_send_time_ = std::nullopt;
+      }
       return;
     }
     radar_cfg_mismatch_detail_ = detail;
@@ -224,6 +250,179 @@ void PeContinentalArs408Node::UpdateRadarCfgSync()
       radar_cfg_mismatch_detail_.c_str());
     PublishRadarCfg();
   }
+}
+
+void PeContinentalArs408Node::PublishFilterCfgEntry(
+  const ars408::filter_signals::FilterCfgEntry & entry)
+{
+  if (!can_tx_publisher_) {
+    return;
+  }
+
+  const auto payload = ars408::can_encoder::EncodeFilterCfg(entry);
+
+  can_msgs::msg::Frame cfg_frame;
+  cfg_frame.header.stamp = this->now();
+  cfg_frame.id = ars408::can_encoder::CanIdForSensor(ars408::FILTER_CFG_00, radar_id_);
+  cfg_frame.dlc = 8;
+  cfg_frame.is_extended = false;
+  cfg_frame.is_rtr = false;
+  cfg_frame.is_error = false;
+  cfg_frame.data = payload;
+
+  can_tx_publisher_->publish(cfg_frame);
+  last_filter_cfg_send_time_ = this->now();
+
+  RCLCPP_INFO(
+    get_logger(),
+    "%s FilterCfg (0x202) index=%s active=%s target=%s",
+    entry.active ? "Published" : "Deactivated",
+    ars408::filter_signals::FilterIndexToString(entry.index),
+    entry.active ? "true" : "false",
+    entry.for_objects ? "objects" : "clusters");
+}
+
+void PeContinentalArs408Node::PublishFilterCfgSequenceStep()
+{
+  if (!send_filter_cfg_on_startup_ || filter_cfg_applied_ || !radar_cfg_applied_) {
+    return;
+  }
+
+  if (filter_cfg_entries_.empty()) {
+    filter_cfg_applied_ = true;
+    return;
+  }
+
+  if (filter_cfg_sequence_start_time_.has_value()) {
+    const double since_start =
+      (this->now() - filter_cfg_sequence_start_time_.value()).seconds();
+    if (since_start < filter_cfg_startup_delay_sec_) {
+      return;
+    }
+  } else {
+    filter_cfg_sequence_start_time_ = this->now();
+    return;
+  }
+
+  if (filter_cfg_send_index_ >= filter_cfg_entries_.size()) {
+    return;
+  }
+
+  const rclcpp::Time now = this->now();
+  if (
+    last_filter_cfg_send_time_.has_value() &&
+    (now - last_filter_cfg_send_time_.value()).seconds() < filter_cfg_inter_send_delay_sec_)
+  {
+    return;
+  }
+
+  PublishFilterCfgEntry(filter_cfg_entries_[filter_cfg_send_index_]);
+  ++filter_cfg_send_index_;
+}
+
+void PeContinentalArs408Node::UpdateFilterCfgSync()
+{
+  if (!send_filter_cfg_on_startup_ || filter_cfg_applied_ || !radar_cfg_applied_) {
+    return;
+  }
+
+  if (filter_cfg_entries_.empty()) {
+    filter_cfg_applied_ = true;
+    return;
+  }
+
+  if (filter_cfg_send_index_ < filter_cfg_entries_.size()) {
+    PublishFilterCfgSequenceStep();
+    return;
+  }
+
+  std::vector<ars408::filter_signals::FilterStateCfg> reported;
+  if (!ars408_driver_.GetFilterStateCfgs(reported)) {
+    filter_cfg_mismatch_detail_ = "FilterState_Cfg (0x204) not received yet";
+  } else {
+    std::string detail;
+    if (ars408::filter_cfg_verify::AllFilterEntriesMatch(
+        filter_cfg_entries_, reported, &detail))
+    {
+      filter_cfg_applied_ = true;
+      filter_cfg_mismatch_detail_.clear();
+      RCLCPP_INFO(get_logger(), "FilterCfg verified on sensor ID %d (matches YAML)", radar_id_);
+      return;
+    }
+    filter_cfg_mismatch_detail_ = detail;
+  }
+
+  const rclcpp::Time now = this->now();
+  const bool should_retry = !last_filter_cfg_send_time_.has_value() ||
+    (now - last_filter_cfg_send_time_.value()).seconds() >= filter_cfg_retry_interval_sec_;
+  if (should_retry && filter_cfg_send_index_ >= filter_cfg_entries_.size()) {
+    RCLCPP_WARN(
+      get_logger(), "FilterCfg mismatch or pending (%s); re-sending 0x202 sequence",
+      filter_cfg_mismatch_detail_.c_str());
+    filter_cfg_send_index_ = 0;
+    last_filter_cfg_send_time_ = std::nullopt;
+    PublishFilterCfgSequenceStep();
+  }
+}
+
+void PeContinentalArs408Node::PublishFilterCfgDiagnostics()
+{
+  if (!send_filter_cfg_on_startup_) {
+    return;
+  }
+
+  DiagnosticArray diag_array;
+  diag_array.header.stamp = this->now();
+
+  DiagnosticStatus diag;
+  diag.name = "ars408_filter_cfg";
+  diag.hardware_id = output_frame_ + "_id" + std::to_string(radar_id_);
+
+  if (filter_cfg_entries_.empty()) {
+    diag.level = DiagnosticStatus::OK;
+    diag.message = "filter_cfg.send_on_startup true but filter_cfg.criteria is empty";
+  } else if (!radar_cfg_applied_) {
+    diag.level = DiagnosticStatus::STALE;
+    diag.message = "Waiting for RadarCfg before FilterCfg";
+  } else if (filter_cfg_applied_) {
+    diag.level = DiagnosticStatus::OK;
+    diag.message = "FilterCfg matches YAML parameters";
+  } else if (filter_cfg_mismatch_detail_.find("not received") != std::string::npos) {
+    diag.level = DiagnosticStatus::STALE;
+    diag.message = "Waiting for FilterCfg on radar (no FilterState_Cfg yet)";
+  } else {
+    diag.level = DiagnosticStatus::WARN;
+    diag.message = "FilterCfg does not match YAML; re-sending 0x202";
+  }
+
+  auto add_kv = [&](const std::string & key, const std::string & value) {
+    diagnostic_msgs::msg::KeyValue kv;
+    kv.key = key;
+    kv.value = value;
+    diag.values.push_back(kv);
+  };
+
+  add_kv("cfg_applied", filter_cfg_applied_ ? "true" : "false");
+  add_kv("filter_cfg.send_on_startup", send_filter_cfg_on_startup_ ? "true" : "false");
+  add_kv("entry_count", std::to_string(filter_cfg_entries_.size()));
+  size_t active_count = 0;
+  for (const auto & entry : filter_cfg_entries_) {
+    if (entry.active) {
+      ++active_count;
+    }
+  }
+  add_kv("entries_active", std::to_string(active_count));
+  add_kv("entries_inactive", std::to_string(filter_cfg_entries_.size() - active_count));
+  add_kv("send_progress", std::to_string(filter_cfg_send_index_));
+  add_kv("mismatch_detail", filter_cfg_mismatch_detail_);
+  if (last_filter_cfg_send_time_.has_value()) {
+    add_kv(
+      "last_filter_send_age_sec",
+      std::to_string((this->now() - last_filter_cfg_send_time_.value()).seconds()));
+  }
+
+  diag_array.status.push_back(diag);
+  diagnostics_pub_->publish(diag_array);
 }
 
 void PeContinentalArs408Node::PublishRadarCfgDiagnostics()
@@ -348,7 +547,14 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
   }
 
   const double elapsed_sec = (current_time - can_receive_last_time_.value()).seconds();
+
+  UpdateRadarCfgSync();
+  UpdateFilterCfgSync();
+  PublishRadarCfgDiagnostics();
+  PublishFilterCfgDiagnostics();
+
   if (elapsed_sec <= can_receive_check_timeout_sec_) {
+    PublishRadarStateDiagnostics();
     return;
   }
 
@@ -375,10 +581,6 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
   diag_array.status.push_back(diag);
 
   diagnostics_pub_->publish(diag_array);
-
-  UpdateRadarCfgSync();
-  PublishRadarCfgDiagnostics();
-  PublishRadarStateDiagnostics();
 }
 
 ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams()
@@ -420,6 +622,78 @@ ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams(
   }
 
   return params;
+}
+
+std::vector<std::string> PeContinentalArs408Node::ListFilterCriteriaNames() const
+{
+  constexpr const char * kCriteriaPrefix = "filter_cfg.criteria.";
+  std::set<std::string> names;
+
+  const rcl_interfaces::msg::ListParametersResult listed =
+    list_parameters(std::vector<std::string>{"filter_cfg.criteria"}, 10u);
+
+  for (const std::string & prefix : listed.prefixes) {
+    if (prefix.rfind(kCriteriaPrefix, 0) != 0) {
+      continue;
+    }
+    const std::string remainder = prefix.substr(std::strlen(kCriteriaPrefix));
+    const auto dot = remainder.find('.');
+    const std::string criterion_name =
+      (dot == std::string::npos) ? remainder : remainder.substr(0, dot);
+    if (!criterion_name.empty()) {
+      names.insert(criterion_name);
+    }
+  }
+
+  for (const std::string & full_name : listed.names) {
+    if (full_name.rfind(kCriteriaPrefix, 0) != 0) {
+      continue;
+    }
+    const std::string remainder = full_name.substr(std::strlen(kCriteriaPrefix));
+    const auto dot = remainder.find('.');
+    const std::string criterion_name =
+      (dot == std::string::npos) ? remainder : remainder.substr(0, dot);
+    if (!criterion_name.empty()) {
+      names.insert(criterion_name);
+    }
+  }
+
+  return std::vector<std::string>(names.begin(), names.end());
+}
+
+std::vector<ars408::filter_signals::FilterCfgEntry> PeContinentalArs408Node::LoadFilterCfgEntries()
+{
+  std::vector<ars408::filter_signals::FilterCfgEntry> entries;
+  auto criterion_names = ListFilterCriteriaNames();
+  std::sort(criterion_names.begin(), criterion_names.end());
+
+  for (const auto & name : criterion_names) {
+    ars408::filter_signals::FilterCfgEntry entry;
+    const std::string prefix = "filter_cfg.criteria." + name + ".";
+
+    const std::string index_name = declare_parameter<std::string>(prefix + "index", name);
+    entry.index = ars408::filter_signals::ParseFilterIndexSetting(index_name);
+    entry.for_objects = ParseFilterTarget(declare_parameter<std::string>(prefix + "target", "objects"));
+    entry.active = declare_parameter<bool>(prefix + "active", true);
+    entry.min_value = declare_parameter<double>(prefix + "min", 0.0);
+    entry.max_value = declare_parameter<double>(prefix + "max", 0.0);
+
+    if (entry.active) {
+      if (
+        !ars408::filter_signals::FilterIndexIgnoresMin(entry.index) &&
+        entry.max_value <= entry.min_value)
+      {
+        throw std::invalid_argument(prefix + "max must be greater than min for " + name);
+      }
+      if (entry.max_value <= 0.0) {
+        throw std::invalid_argument(prefix + "max must be positive for " + name);
+      }
+    }
+
+    entries.push_back(entry);
+  }
+
+  return entries;
 }
 
 uint32_t PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(
@@ -559,6 +833,30 @@ void PeContinentalArs408Node::SetParameter()
   } else {
     radar_cfg_applied_ = true;
   }
+
+  send_filter_cfg_on_startup_ =
+    declare_parameter<bool>("filter_cfg.send_on_startup", false);
+  filter_cfg_startup_delay_sec_ =
+    declare_parameter<double>("filter_cfg.startup_delay_sec", 0.5);
+  filter_cfg_inter_send_delay_sec_ =
+    declare_parameter<double>("filter_cfg.inter_send_delay_sec", 0.05);
+  filter_cfg_retry_interval_sec_ =
+    declare_parameter<double>("filter_cfg.retry_interval_sec", 2.0);
+
+  if (filter_cfg_inter_send_delay_sec_ <= 0.0) {
+    throw std::invalid_argument("filter_cfg.inter_send_delay_sec must be positive");
+  }
+  if (filter_cfg_retry_interval_sec_ <= 0.0) {
+    throw std::invalid_argument("filter_cfg.retry_interval_sec must be positive");
+  }
+
+  if (send_filter_cfg_on_startup_) {
+    filter_cfg_entries_ = LoadFilterCfgEntries();
+    filter_cfg_applied_ = filter_cfg_entries_.empty();
+    filter_cfg_send_index_ = 0;
+  } else {
+    filter_cfg_applied_ = true;
+  }
 }
 
 void PeContinentalArs408Node::Run()
@@ -588,7 +886,8 @@ void PeContinentalArs408Node::Run()
     std::chrono::milliseconds(static_cast<int64_t>(1000.0 / can_receive_check_rate_hz_)),
     std::bind(&PeContinentalArs408Node::OnCanReceiveCheck, this));
 
-  const bool needs_can_tx = publish_motion_input_ || require_radar_cfg_sync_;
+  const bool needs_can_tx =
+    publish_motion_input_ || require_radar_cfg_sync_ || send_filter_cfg_on_startup_;
   if (needs_can_tx) {
     can_tx_publisher_ =
       this->create_publisher<can_msgs::msg::Frame>("~/output/to_can_bus", rclcpp::QoS(10));
@@ -614,6 +913,22 @@ void PeContinentalArs408Node::Run()
           PublishRadarCfg();
         }
         radar_cfg_startup_timer_->cancel();
+      });
+  }
+
+  if (send_filter_cfg_on_startup_ && !filter_cfg_entries_.empty()) {
+    filter_cfg_startup_timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(50),
+      [this]() {
+        if (filter_cfg_applied_) {
+          filter_cfg_startup_timer_->cancel();
+          return;
+        }
+        if (!radar_cfg_applied_) {
+          return;
+        }
+        PublishFilterCfgSequenceStep();
+        UpdateFilterCfgSync();
       });
   }
 }

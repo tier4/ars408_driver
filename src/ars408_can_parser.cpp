@@ -239,5 +239,32 @@ VersionId ParseVersionId(const std::array<uint8_t, 8> & in_can_data)
   return version;
 }
 
+filter_signals::FilterStateHeader ParseFilterStateHeader(
+  const std::array<uint8_t, 8> & in_can_data)
+{
+  filter_signals::FilterStateHeader header;
+  header.cluster_filter_count =
+    static_cast<uint8_t>(unpackSignalIntel(in_can_data, 3, 5));
+  header.object_filter_count =
+    static_cast<uint8_t>(unpackSignalIntel(in_can_data, 11, 5));
+  return header;
+}
+
+filter_signals::FilterStateCfg ParseFilterStateCfg(const std::array<uint8_t, 8> & in_can_data)
+{
+  filter_signals::FilterStateCfg state;
+  const uint8_t raw_index = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 3, 4));
+  state.index = filter_signals::FilterIndexFromRaw(raw_index);
+  state.active = unpackSignalIntel(in_can_data, 2, 1) != 0u;
+  state.for_objects = unpackSignalIntel(in_can_data, 7, 1) != 0u;
+
+  const uint8_t value_bits = filter_signals::FilterIndexUses13BitRange(state.index) ? 13u : 12u;
+  const uint32_t raw_min = unpackSignalIntel(in_can_data, 16, value_bits);
+  const uint32_t raw_max = unpackSignalIntel(in_can_data, 32, value_bits);
+  state.min_value = filter_signals::DecodeRawMin(state.index, raw_min);
+  state.max_value = filter_signals::DecodeRawMax(state.index, raw_max);
+  return state;
+}
+
 }  // namespace can_parser
 }  // namespace ars408
