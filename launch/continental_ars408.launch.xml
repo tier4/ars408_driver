@@ -1,13 +1,14 @@
 <launch>
-  <arg name="input/frame" default="/sensing/radar/from_can_bus" />
-  <arg name="output/to_can_bus" default="/sensing/radar/to_can_bus" />
-  <arg name="input/odometry" default="/localization/kinematic_state" />
+  <arg name="from_can_bus" default="from_can_bus" description="CAN frames from socket_can_bridge (RX)"/>
+  <arg name="to_can_bus" default="to_can_bus" description="CAN frames to socket_can_bridge (TX)"/>
+  <arg name="odometry" default="/localization/kinematic_state" description="Vehicle odometry for 0x300/0x301"/>
   <arg name="config_file" default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
+  <arg name="node_name" default="pe_ars408_node" description="Unique node name (required when multiple radars share one CAN bus)" />
 
-  <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
+  <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="$(var node_name)" output="screen">
     <param from="$(var config_file)" allow_substs="true" />
-    <remap from="~/input/frame" to="$(var input/frame)" />
-    <remap from="~/output/to_can_bus" to="$(var output/to_can_bus)" />
-    <remap from="~/input/odometry" to="$(var input/odometry)" />
+    <remap from="~/from_can_bus" to="$(var from_can_bus)" />
+    <remap from="~/to_can_bus" to="$(var to_can_bus)" />
+    <remap from="~/odometry" to="$(var odometry)" />
   </node>
 </launch>

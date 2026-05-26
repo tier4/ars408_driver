@@ -872,7 +872,7 @@ void PeContinentalArs408Node::Run()
     sequential_publish_);
 
   can_subscription_ = this->create_subscription<can_msgs::msg::Frame>(
-    "~/input/frame", 10,
+    "~/from_can_bus", 10,
     std::bind(&PeContinentalArs408Node::CanFrameCallback, this, std::placeholders::_1));
 
   publisher_radar_tracks_ =
@@ -890,12 +890,12 @@ void PeContinentalArs408Node::Run()
     publish_motion_input_ || require_radar_cfg_sync_ || send_filter_cfg_on_startup_;
   if (needs_can_tx) {
     can_tx_publisher_ =
-      this->create_publisher<can_msgs::msg::Frame>("~/output/to_can_bus", rclcpp::QoS(10));
+      this->create_publisher<can_msgs::msg::Frame>("~/to_can_bus", rclcpp::QoS(10));
   }
 
   if (publish_motion_input_) {
     odometry_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
-      "~/input/odometry", rclcpp::QoS(10),
+      "~/odometry", rclcpp::QoS(10),
       std::bind(&PeContinentalArs408Node::OdometryCallback, this, std::placeholders::_1));
 
     const auto period = std::chrono::duration<double>(1.0 / motion_publish_rate_hz_);

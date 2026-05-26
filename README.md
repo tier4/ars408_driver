@@ -40,14 +40,14 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
 ## Design
 ### Input
 
-- `~/input/frame` (remap to `from_can_bus` from `socket_can_bridge`)
+- `~/from_can_bus` (remap to `from_can_bus` from `socket_can_bridge`)
   - `can_msgs` <https://github.com/ros-industrial/ros_canopen/tree/melodic-devel/can_msgs>
-- `~/input/odometry` (default remap: `/localization/kinematic_state`)
+- `~/odometry` (default remap: `/localization/kinematic_state`)
   - `nav_msgs/Odometry` — used to publish motion CAN 0x300/0x301 when `publish_motion_input` is true
 
 ### Output
 
-- `~/output/to_can_bus` (remap to `to_can_bus` for `socket_can_bridge`)
+- `~/to_can_bus` (remap to `to_can_bus` for `socket_can_bridge`)
   - RadarCfg (0x200) at startup when `publish_radar_cfg_on_startup` is true
   - FilterCfg (0x202) sequence when `filter_cfg.send_on_startup` is true (after RadarCfg is verified)
   - Motion CAN frames (0x300 Speed Information, 0x301 Yaw Rate Information)
@@ -82,7 +82,7 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
 - `publish_objects_name` / `publish_scan_name`
   - Topic names for radar tracks and scan output.
 - `publish_motion_input`
-  - When true, publish 0x300/0x301 on `~/output/to_can_bus` from odometry at `motion_publish_rate_hz`. Remap the topic in launch only (not a ROS parameter).
+  - When true, publish 0x300/0x301 on `~/to_can_bus` from odometry at `motion_publish_rate_hz`. Remap the topic in launch only (not a ROS parameter).
 - `motion_publish_rate_hz`, `speed_standstill_threshold_mps`, `speed_moving_threshold_mps`
   - Motion CAN encoding options (see `ars408_driver.param.yaml`).
 - `publish_radar_cfg_on_startup`, `radar_cfg_startup_delay_sec`, `radar_cfg_retry_interval_sec`
@@ -106,10 +106,10 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
 ### launcher
 
 - `continental_ars408.launch.xml`
-  - Single `pe_ars408_node` (RX + TX + object publishing). Remaps:
-    - `input/frame` → CAN RX (`from_can_bus`)
-    - `output/to_can_bus` → CAN TX (`to_can_bus`)
-    - `input/odometry` → vehicle odometry
+  - Single `pe_ars408_node` (RX + TX + object publishing). Launch args / remaps (same names as `ros2_socketcan`):
+    - `from_can_bus` — CAN RX
+    - `to_can_bus` — CAN TX
+    - `odometry` — vehicle odometry
 
 ## Reference
 
