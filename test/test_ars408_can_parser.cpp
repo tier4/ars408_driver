@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_can_parser.hpp"
 
 #include <gtest/gtest.h>
@@ -41,6 +42,20 @@ TEST(Ars408CanParser, SensorIdFromCanId)
   EXPECT_EQ(SensorIdFromCanId(0x211), 1u);
   EXPECT_EQ(SensorIdFromCanId(0x60B), 0u);
   EXPECT_EQ(SensorIdFromCanId(0x61B), 1u);
+}
+
+TEST(Ars408CanParser, ParseRadarStateMaxDistance)
+{
+  ars408::can_encoder::RadarCfgParams params;
+  params.update_max_distance = true;
+  params.max_distance_m = 260;
+
+  const auto encoded = ars408::can_encoder::EncodeRadarCfg(params);
+
+  ars408::RadarState state;
+  ParseRadarState(encoded, state);
+
+  EXPECT_EQ(state.MaxDistance, 260u);
 }
 
 TEST(Ars408CanParser, ParseObjectListStatus)

@@ -17,25 +17,13 @@
 #include "ars408_ros/ars408_filter_cfg_verify.hpp"
 #include "ars408_ros/ars408_filter_signals.hpp"
 
+#include "ars408_ros/detail/ars408_can_signal.hpp"
+
 #include <gtest/gtest.h>
 
 #include <array>
 
-namespace
-{
-uint32_t unpackSignalIntel(
-  const std::array<uint8_t, 8> & data, const uint16_t start_bit, const uint8_t length)
-{
-  uint32_t raw = 0;
-  for (uint8_t i = 0; i < length; ++i) {
-    const uint16_t bit_index = start_bit + i;
-    if ((data[bit_index / 8] >> (bit_index % 8)) & 0x01u) {
-      raw |= (1u << i);
-    }
-  }
-  return raw;
-}
-}  // namespace
+using ars408::can_signal::UnpackSignalIntel;
 
 TEST(Ars408FilterCfg, EncodeDistanceFilter)
 {
@@ -48,11 +36,11 @@ TEST(Ars408FilterCfg, EncodeDistanceFilter)
 
   const auto data = ars408::can_encoder::EncodeFilterCfg(entry);
 
-  EXPECT_EQ(unpackSignalIntel(data, 1, 1), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 2, 1), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 3, 4), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 7, 1), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 32, 12), 2600u);
+  EXPECT_EQ(UnpackSignalIntel(data, 1, 1), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 2, 1), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 3, 4), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 7, 1), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 32, 12), 2600u);
 }
 
 TEST(Ars408FilterCfg, EncodeNofObjMaxOnly)
@@ -65,8 +53,8 @@ TEST(Ars408FilterCfg, EncodeNofObjMaxOnly)
 
   const auto data = ars408::can_encoder::EncodeFilterCfg(entry);
 
-  EXPECT_EQ(unpackSignalIntel(data, 16, 12), 0u);
-  EXPECT_EQ(unpackSignalIntel(data, 32, 12), 64u);
+  EXPECT_EQ(UnpackSignalIntel(data, 16, 12), 0u);
+  EXPECT_EQ(UnpackSignalIntel(data, 32, 12), 64u);
 }
 
 TEST(Ars408FilterCfg, ParseFilterStateCfgRoundTrip)
@@ -125,7 +113,7 @@ TEST(Ars408FilterCfg, EncodeDeactivateDistanceFilter)
   entry.for_objects = true;
 
   const auto data = ars408::can_encoder::EncodeFilterCfg(entry);
-  EXPECT_EQ(unpackSignalIntel(data, 2, 1), 0u);
+  EXPECT_EQ(UnpackSignalIntel(data, 2, 1), 0u);
 }
 
 TEST(Ars408FilterCfg, VerifyMatchingEntries)

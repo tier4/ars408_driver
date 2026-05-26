@@ -14,6 +14,8 @@
 
 #include "ars408_ros/ars408_can_parser.hpp"
 
+#include "ars408_ros/detail/ars408_can_signal.hpp"
+
 #include <algorithm>
 
 namespace ars408
@@ -23,18 +25,7 @@ namespace can_parser
 namespace
 {
 
-uint32_t unpackSignalIntel(
-  const std::array<uint8_t, 8> & data, const uint16_t start_bit, const uint8_t length)
-{
-  uint32_t raw = 0;
-  for (uint8_t i = 0; i < length; ++i) {
-    const uint16_t bit_index = start_bit + i;
-    if ((data[bit_index / 8] >> (bit_index % 8)) & 0x01u) {
-      raw |= (1u << i);
-    }
-  }
-  return raw;
-}
+using ars408::can_signal::UnpackSignalIntel;
 
 // Table 45 upper bounds (Standard Radar Interface v1.12).
 constexpr float kRmsDistanceM[] = {
@@ -88,10 +79,8 @@ void ParseRadarState(const std::array<uint8_t, 8> & in_can_data, RadarState & ou
   out_state.NvmWriteStatus = ((in_can_data[0] & 0x80u) >> 7u);
   out_state.NvmReadStatus = ((in_can_data[0] & 0x40u) >> 6u);
 
-  const uint16_t distance =
-    static_cast<uint16_t>(
-    ((((in_can_data[1] & 0xFFu) << 2u) & 0xFFFFu) + ((in_can_data[2] & 0xC0u) >> 6u)) << 1u);
-  out_state.MaxDistance = distance;
+  out_state.MaxDistance =
+    static_cast<uint16_t>(UnpackSignalIntel(in_can_data, 22, 10) * 2u);
   out_state.PersistentError = (in_can_data[2] & 0x20u) >> 5u;
   out_state.Interference = (in_can_data[2] & 0x10u) >> 4u;
   out_state.TemperatureError = (in_can_data[2] & 0x08u) >> 3u;
@@ -115,8 +104,7 @@ void ParseObjectListStatus(const std::array<uint8_t, 8> & in_can_data, Obj_0_Sta
 {
   out_status.NumberOfObjects = in_can_data[0];
   out_status.MeasurementCounter =
-    static_cast<uint16_t>(in_can_data[2]) |
-    (static_cast<uint16_t>(in_can_data[3]) << 8u);
+    static_cast<uint16_t>(UnpackSignalIntel(in_can_data, 16, 16));
   out_status.InterfaceVersion = static_cast<uint8_t>((in_can_data[3] >> 4u) & 0x0Fu);
 }
 
@@ -150,15 +138,15 @@ RadarObject ParseObjectGeneral(
 Obj_2_Quality ParseObjectQuality(const std::array<uint8_t, 8> & in_can_data)
 {
   Obj_2_Quality obj_quality;
-  obj_quality.Id = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 0, 8));
+  obj_quality.Id = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 0, 8));
 
-  const uint8_t dist_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 11, 5));
-  const uint8_t vrel_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 17, 5));
-  const uint8_t dist_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 22, 5));
-  const uint8_t vrel_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 28, 5));
-  const uint8_t arel_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 34, 5));
-  const uint8_t arel_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 39, 5));
-  const uint8_t orient_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 45, 5));
+  const uint8_t dist_long_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 11, 5));
+  const uint8_t vrel_long_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 17, 5));
+  const uint8_t dist_lat_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 22, 5));
+  const uint8_t vrel_lat_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 28, 5));
+  const uint8_t arel_lat_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 34, 5));
+  const uint8_t arel_long_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 39, 5));
+  const uint8_t orient_idx = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 45, 5));
 
   obj_quality.LongitudinalDistanceXRms =
     LookupRms(kRmsDistanceM, sizeof(kRmsDistanceM) / sizeof(float), dist_long_idx);
@@ -176,8 +164,8 @@ Obj_2_Quality ParseObjectQuality(const std::array<uint8_t, 8> & in_can_data)
     LookupRms(
     kRmsOrientationDeg, sizeof(kRmsOrientationDeg) / sizeof(float), orient_idx);
 
-  obj_quality.MeasState = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 50, 3));
-  const uint8_t prob_index = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 53, 3));
+  obj_quality.MeasState = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 50, 3));
+  const uint8_t prob_index = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 53, 3));
   obj_quality.ExistenceProbability = DecodeExistenceProbability(prob_index);
 
   return obj_quality;
@@ -244,23 +232,23 @@ filter_signals::FilterStateHeader ParseFilterStateHeader(
 {
   filter_signals::FilterStateHeader header;
   header.cluster_filter_count =
-    static_cast<uint8_t>(unpackSignalIntel(in_can_data, 3, 5));
+    static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 3, 5));
   header.object_filter_count =
-    static_cast<uint8_t>(unpackSignalIntel(in_can_data, 11, 5));
+    static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 11, 5));
   return header;
 }
 
 filter_signals::FilterStateCfg ParseFilterStateCfg(const std::array<uint8_t, 8> & in_can_data)
 {
   filter_signals::FilterStateCfg state;
-  const uint8_t raw_index = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 3, 4));
+  const uint8_t raw_index = static_cast<uint8_t>(UnpackSignalIntel(in_can_data, 3, 4));
   state.index = filter_signals::FilterIndexFromRaw(raw_index);
-  state.active = unpackSignalIntel(in_can_data, 2, 1) != 0u;
-  state.for_objects = unpackSignalIntel(in_can_data, 7, 1) != 0u;
+  state.active = UnpackSignalIntel(in_can_data, 2, 1) != 0u;
+  state.for_objects = UnpackSignalIntel(in_can_data, 7, 1) != 0u;
 
   const uint8_t value_bits = filter_signals::FilterIndexUses13BitRange(state.index) ? 13u : 12u;
-  const uint32_t raw_min = unpackSignalIntel(in_can_data, 16, value_bits);
-  const uint32_t raw_max = unpackSignalIntel(in_can_data, 32, value_bits);
+  const uint32_t raw_min = UnpackSignalIntel(in_can_data, 16, value_bits);
+  const uint32_t raw_max = UnpackSignalIntel(in_can_data, 32, value_bits);
   state.min_value = filter_signals::DecodeRawMin(state.index, raw_min);
   state.max_value = filter_signals::DecodeRawMax(state.index, raw_max);
   return state;

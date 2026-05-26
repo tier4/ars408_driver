@@ -14,26 +14,14 @@
 
 #include "ars408_ros/ars408_can_encoder.hpp"
 
+#include "ars408_ros/detail/ars408_can_signal.hpp"
+
 #include <gtest/gtest.h>
 
 #include <array>
 #include <cmath>
 
-namespace
-{
-uint32_t unpackSignalIntel(
-  const std::array<uint8_t, 8> & data, const uint16_t start_bit, const uint8_t length)
-{
-  uint32_t raw = 0;
-  for (uint8_t i = 0; i < length; ++i) {
-    const uint16_t bit_index = start_bit + i;
-    if ((data[bit_index / 8] >> (bit_index % 8)) & 0x01u) {
-      raw |= (1u << i);
-    }
-  }
-  return raw;
-}
-}  // namespace
+using ars408::can_signal::UnpackSignalIntel;
 
 TEST(Ars408CanEncoder, CanIdForSensor)
 {
@@ -47,8 +35,8 @@ TEST(Ars408CanEncoder, EncodeSpeedInformation)
   const auto data = ars408::can_encoder::EncodeSpeedInformation(
     10.0f, ars408::can_encoder::SpeedDirection::FORWARD);
 
-  EXPECT_EQ(unpackSignalIntel(data, 6, 2), 1u);
-  EXPECT_NEAR(static_cast<float>(unpackSignalIntel(data, 8, 13)) * 0.02f, 10.0f, 0.02f);
+  EXPECT_EQ(UnpackSignalIntel(data, 6, 2), 1u);
+  EXPECT_NEAR(static_cast<float>(UnpackSignalIntel(data, 8, 13)) * 0.02f, 10.0f, 0.02f);
 }
 
 TEST(Ars408CanEncoder, EncodeSpeedStandstill)
@@ -56,19 +44,19 @@ TEST(Ars408CanEncoder, EncodeSpeedStandstill)
   const auto data = ars408::can_encoder::EncodeSpeedInformation(
     0.0f, ars408::can_encoder::SpeedDirection::STANDSTILL);
 
-  EXPECT_EQ(unpackSignalIntel(data, 6, 2), 0u);
-  EXPECT_EQ(unpackSignalIntel(data, 8, 13), 0u);
+  EXPECT_EQ(UnpackSignalIntel(data, 6, 2), 0u);
+  EXPECT_EQ(UnpackSignalIntel(data, 8, 13), 0u);
 }
 
 TEST(Ars408CanEncoder, EncodeYawRateInformation)
 {
   const auto data = ars408::can_encoder::EncodeYawRateInformation(0.0f);
-  const float decoded = static_cast<float>(unpackSignalIntel(data, 8, 16)) * 0.01f - 327.68f;
+  const float decoded = static_cast<float>(UnpackSignalIntel(data, 8, 16)) * 0.01f - 327.68f;
   EXPECT_NEAR(decoded, 0.0f, 0.02f);
 
   const auto left_turn = ars408::can_encoder::EncodeYawRateInformation(10.0f);
   const float decoded_turn =
-    static_cast<float>(unpackSignalIntel(left_turn, 8, 16)) * 0.01f - 327.68f;
+    static_cast<float>(UnpackSignalIntel(left_turn, 8, 16)) * 0.01f - 327.68f;
   EXPECT_NEAR(decoded_turn, 10.0f, 0.05f);
 }
 
@@ -104,11 +92,11 @@ TEST(Ars408CanEncoder, EncodeRadarCfgObjectOutputDefaults)
 
   const auto data = ars408::can_encoder::EncodeRadarCfg(params);
 
-  EXPECT_EQ(unpackSignalIntel(data, 35, 2), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 42, 1), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 43, 1), 1u);
-  EXPECT_EQ(unpackSignalIntel(data, 22, 10), 130u);
-  EXPECT_EQ(unpackSignalIntel(data, 37, 3), 1u);  // minus_3db
+  EXPECT_EQ(UnpackSignalIntel(data, 35, 2), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 42, 1), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 43, 1), 1u);
+  EXPECT_EQ(UnpackSignalIntel(data, 22, 10), 130u);
+  EXPECT_EQ(UnpackSignalIntel(data, 37, 3), 1u);  // minus_3db
 }
 
 TEST(Ars408CanEncoder, ParseRadarPowerRejectsStandard)

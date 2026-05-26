@@ -14,6 +14,8 @@
 
 #include "ars408_ros/ars408_can_encoder.hpp"
 
+#include "ars408_ros/detail/ars408_can_signal.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -25,17 +27,7 @@ namespace can_encoder
 namespace
 {
 
-void packSignalIntel(
-  std::array<uint8_t, 8> & data, const uint16_t start_bit, const uint8_t length,
-  const uint32_t raw)
-{
-  for (uint8_t i = 0; i < length; ++i) {
-    if ((raw >> i) & 0x01u) {
-      const uint16_t bit_index = start_bit + i;
-      data[bit_index / 8] |= static_cast<uint8_t>(1u << (bit_index % 8));
-    }
-  }
-}
+using ars408::can_signal::PackSignalIntel;
 
 }  // namespace
 
@@ -73,8 +65,8 @@ std::array<uint8_t, 8> EncodeSpeedInformation(
   const uint32_t raw_speed = static_cast<uint32_t>(std::lround(clamped_speed / 0.02f)) & 0x1FFFu;
   const uint32_t raw_direction = static_cast<uint32_t>(direction) & 0x03u;
 
-  packSignalIntel(data, 6, 2, raw_direction);
-  packSignalIntel(data, 8, 13, raw_speed);
+  PackSignalIntel(data, 6, 2, raw_direction);
+  PackSignalIntel(data, 8, 13, raw_speed);
   return data;
 }
 
@@ -85,7 +77,7 @@ std::array<uint8_t, 8> EncodeYawRateInformation(const float yaw_rate_deg_s)
   const uint32_t raw_yaw = static_cast<uint32_t>(std::lround((clamped_yaw + 327.68f) / 0.01f)) &
                          0xFFFFu;
 
-  packSignalIntel(data, 8, 16, raw_yaw);
+  PackSignalIntel(data, 8, 16, raw_yaw);
   return data;
 }
 
@@ -94,67 +86,67 @@ std::array<uint8_t, 8> EncodeRadarCfg(const RadarCfgParams & params)
   std::array<uint8_t, 8> data{};
 
   if (params.update_max_distance) {
-    packSignalIntel(data, 0, 1, 1);
+    PackSignalIntel(data, 0, 1, 1);
   }
   if (params.update_sensor_id) {
-    packSignalIntel(data, 1, 1, 1);
+    PackSignalIntel(data, 1, 1, 1);
   }
   if (params.update_radar_power) {
-    packSignalIntel(data, 2, 1, 1);
+    PackSignalIntel(data, 2, 1, 1);
   }
   if (params.update_output_type) {
-    packSignalIntel(data, 3, 1, 1);
+    PackSignalIntel(data, 3, 1, 1);
   }
   if (params.update_send_quality) {
-    packSignalIntel(data, 4, 1, 1);
+    PackSignalIntel(data, 4, 1, 1);
   }
   if (params.update_send_ext_info) {
-    packSignalIntel(data, 5, 1, 1);
+    PackSignalIntel(data, 5, 1, 1);
   }
   if (params.update_sort_index) {
-    packSignalIntel(data, 6, 1, 1);
+    PackSignalIntel(data, 6, 1, 1);
   }
   if (params.update_store_in_nvm) {
-    packSignalIntel(data, 7, 1, 1);
+    PackSignalIntel(data, 7, 1, 1);
   }
   if (params.update_ctrl_relay) {
-    packSignalIntel(data, 40, 1, 1);
+    PackSignalIntel(data, 40, 1, 1);
   }
   if (params.update_rcs_threshold) {
-    packSignalIntel(data, 48, 1, 1);
+    PackSignalIntel(data, 48, 1, 1);
   }
 
   if (params.update_max_distance) {
     const uint32_t raw_distance =
       std::min(1023u, static_cast<uint32_t>(params.max_distance_m / 2u));
-    packSignalIntel(data, 22, 10, raw_distance);
+    PackSignalIntel(data, 22, 10, raw_distance);
   }
   if (params.update_sensor_id) {
-    packSignalIntel(data, 32, 3, params.sensor_id & 0x07u);
+    PackSignalIntel(data, 32, 3, params.sensor_id & 0x07u);
   }
   if (params.update_output_type) {
-    packSignalIntel(data, 35, 2, static_cast<uint32_t>(params.output_type));
+    PackSignalIntel(data, 35, 2, static_cast<uint32_t>(params.output_type));
   }
   if (params.update_radar_power) {
-    packSignalIntel(data, 37, 3, static_cast<uint32_t>(params.radar_power));
+    PackSignalIntel(data, 37, 3, static_cast<uint32_t>(params.radar_power));
   }
   if (params.update_ctrl_relay) {
-    packSignalIntel(data, 41, 1, params.ctrl_relay ? 1u : 0u);
+    PackSignalIntel(data, 41, 1, params.ctrl_relay ? 1u : 0u);
   }
   if (params.update_send_quality) {
-    packSignalIntel(data, 42, 1, params.send_quality ? 1u : 0u);
+    PackSignalIntel(data, 42, 1, params.send_quality ? 1u : 0u);
   }
   if (params.update_send_ext_info) {
-    packSignalIntel(data, 43, 1, params.send_ext_info ? 1u : 0u);
+    PackSignalIntel(data, 43, 1, params.send_ext_info ? 1u : 0u);
   }
   if (params.update_sort_index) {
-    packSignalIntel(data, 44, 3, static_cast<uint32_t>(params.sort_index));
+    PackSignalIntel(data, 44, 3, static_cast<uint32_t>(params.sort_index));
   }
   if (params.update_store_in_nvm) {
-    packSignalIntel(data, 47, 1, params.store_in_nvm ? 1u : 0u);
+    PackSignalIntel(data, 47, 1, params.store_in_nvm ? 1u : 0u);
   }
   if (params.update_rcs_threshold) {
-    packSignalIntel(data, 49, 3, static_cast<uint32_t>(params.rcs_threshold));
+    PackSignalIntel(data, 49, 3, static_cast<uint32_t>(params.rcs_threshold));
   }
 
   return data;
@@ -164,16 +156,16 @@ std::array<uint8_t, 8> EncodeFilterCfg(const filter_signals::FilterCfgEntry & en
 {
   std::array<uint8_t, 8> data{};
 
-  packSignalIntel(data, 1, 1, 1u);
-  packSignalIntel(data, 2, 1, entry.active ? 1u : 0u);
-  packSignalIntel(data, 3, 4, filter_signals::FilterIndexToRaw(entry.index));
-  packSignalIntel(data, 7, 1, entry.for_objects ? 1u : 0u);
+  PackSignalIntel(data, 1, 1, 1u);
+  PackSignalIntel(data, 2, 1, entry.active ? 1u : 0u);
+  PackSignalIntel(data, 3, 4, filter_signals::FilterIndexToRaw(entry.index));
+  PackSignalIntel(data, 7, 1, entry.for_objects ? 1u : 0u);
 
   const uint8_t value_bits = filter_signals::FilterIndexUses13BitRange(entry.index) ? 13u : 12u;
   if (!filter_signals::FilterIndexIgnoresMin(entry.index)) {
-    packSignalIntel(data, 16, value_bits, filter_signals::EncodeRawMin(entry));
+    PackSignalIntel(data, 16, value_bits, filter_signals::EncodeRawMin(entry));
   }
-  packSignalIntel(data, 32, value_bits, filter_signals::EncodeRawMax(entry));
+  PackSignalIntel(data, 32, value_bits, filter_signals::EncodeRawMax(entry));
 
   return data;
 }
