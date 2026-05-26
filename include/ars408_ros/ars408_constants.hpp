@@ -187,7 +187,7 @@ const uint32_t OBJ_QUALITY_04 = 0x64C;
 const uint32_t OBJ_QUALITY_05 = 0x65C;
 const uint32_t OBJ_QUALITY_06 = 0x66C;
 const uint32_t OBJ_QUALITY_07 = 0x67C;
-const uint8_t OBJ_QUALITY_BYTES = 7;
+const uint8_t OBJ_QUALITY_BYTES = 8;
 
 const uint32_t OBJ_EXTENDED_00 = 0x60D;
 const uint32_t OBJ_EXTENDED_01 = 0x61D;

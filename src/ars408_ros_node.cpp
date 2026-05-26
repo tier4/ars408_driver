@@ -14,6 +14,8 @@
 
 #include "ars408_ros/ars408_ros_node.hpp"
 
+#include "ars408_ros/ars408_can_parser.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <string>
@@ -29,9 +31,15 @@ PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & nod
 
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
 {
-  if (!can_msg->data.empty()) {
-    ars408_driver_.Parse(can_msg->id, can_msg->data, can_msg->dlc, can_msg->header.stamp);
+  if (can_msg->data.empty()) {
+    return;
   }
+
+  if (ars408::can_parser::SensorIdFromCanId(can_msg->id) == radar_id_) {
+    can_receive_last_time_ = this->now();
+  }
+
+  ars408_driver_.Parse(can_msg->id, can_msg->data, can_msg->dlc, can_msg->header.stamp);
 }
 
 void PeContinentalArs408Node::OnCanReceiveCheck()
@@ -132,8 +140,6 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects,
   const rclcpp::Time & stamp)
 {
-  can_receive_last_time_ = this->now();
-
   radar_msgs::msg::RadarTracks output_objects;
   output_objects.header.frame_id = output_frame_;
   output_objects.header.stamp = stamp;

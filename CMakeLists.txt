@@ -16,6 +16,7 @@ ament_auto_find_build_dependencies()
 
 # Driver Library
 ament_auto_add_library(pe_ars408_parser SHARED
+  src/ars408_can_parser.cpp
   src/ars408_driver.cpp
 )
 
@@ -34,8 +35,14 @@ rclcpp_components_register_node(pe_ars408_node_component
 )
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_ars408_can_parser test/test_ars408_can_parser.cpp)
+  if(TARGET test_ars408_can_parser)
+    target_link_libraries(test_ars408_can_parser pe_ars408_parser)
+  endif()
 endif()
 
 ament_auto_package(
