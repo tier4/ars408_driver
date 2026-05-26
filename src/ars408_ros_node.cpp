@@ -441,40 +441,19 @@ uint32_t PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(
 radar_msgs::msg::RadarTrack PeContinentalArs408Node::ConvertRadarObjectToRadarTrack(
   const ars408::RadarObject & in_object)
 {
-  radar_msgs::msg::RadarTrack out_object;
-  out_object.uuid = UUID_table_[in_object.id];
-
-  out_object.position.x = in_object.distance_long_x;
-  out_object.position.y = in_object.distance_lat_y;
-
-  out_object.velocity.x = in_object.speed_long_x;
-  out_object.velocity.y = in_object.speed_lat_y;
-  out_object.velocity_covariance.at(0) = 0.1;
-
-  out_object.acceleration.x = in_object.rel_acceleration_long_x;
-  out_object.acceleration.y = in_object.rel_acceleration_lat_y;
-
-  out_object.size.x = size_x_;
-  out_object.size.y = size_y_;
-  out_object.size.z = 1.0;
-
-  out_object.classification = ConvertRadarClassToAwSemanticClass(in_object.object_class);
-
-  return out_object;
+  auto track = ars408::radar_msgs_conversion::ToRadarTrack(
+    in_object, track_conversion_options_,
+    [this](const ars408::Obj_3_Extended::ObjectClassProperty & radar_class) {
+      return ConvertRadarClassToAwSemanticClass(radar_class);
+    });
+  track.uuid = UUID_table_[in_object.id];
+  return track;
 }
 
 radar_msgs::msg::RadarReturn PeContinentalArs408Node::ConvertRadarObjectToRadarReturn(
   const ars408::RadarObject & in_object)
 {
-  radar_msgs::msg::RadarReturn radar_return;
-  radar_return.range = std::sqrt(
-    in_object.distance_long_x * in_object.distance_long_x +
-    in_object.distance_lat_y * in_object.distance_lat_y);
-  radar_return.azimuth = std::atan2(in_object.distance_lat_y, in_object.distance_long_x);
-  radar_return.doppler_velocity = in_object.speed_long_x / std::cos(radar_return.azimuth);
-  radar_return.elevation = 0.0;
-  radar_return.amplitude = 0.0;
-  return radar_return;
+  return ars408::radar_msgs_conversion::ToRadarReturn(in_object);
 }
 
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
@@ -541,14 +520,18 @@ void PeContinentalArs408Node::SetParameter()
   sequential_publish_ = this->declare_parameter<bool>("sequential_publish");
   size_x_ = this->declare_parameter<double>("size_x");
   size_y_ = this->declare_parameter<double>("size_y");
+  track_conversion_options_.fallback_size_x = size_x_;
+  track_conversion_options_.fallback_size_y = size_y_;
+  track_conversion_options_.use_radar_reported_dimensions =
+    declare_parameter<bool>("use_radar_reported_dimensions", true);
+  track_conversion_options_.inflate_covariance_by_existence_probability =
+    declare_parameter<bool>("inflate_covariance_by_existence_probability", true);
   publish_objects_name_ = this->declare_parameter<std::string>("publish_objects_name");
   publish_scan_name_ = this->declare_parameter<std::string>("publish_scan_name");
   can_receive_check_rate_hz_ = this->declare_parameter<double>("can_receive_check_rate_hz");
   can_receive_check_timeout_sec_ = this->declare_parameter<double>("can_receive_check_timeout_sec");
 
   publish_motion_input_ = this->declare_parameter<bool>("publish_motion_input", true);
-  output_can_frame_topic_ = this->declare_parameter<std::string>(
-    "output_can_frame_topic", "~/output/to_can_bus");
   motion_publish_rate_hz_ = this->declare_parameter<double>("motion_publish_rate_hz", 50.0);
   speed_standstill_threshold_mps_ =
     declare_parameter<double>("speed_standstill_threshold_mps", 0.5);
@@ -608,7 +591,7 @@ void PeContinentalArs408Node::Run()
   const bool needs_can_tx = publish_motion_input_ || require_radar_cfg_sync_;
   if (needs_can_tx) {
     can_tx_publisher_ =
-      this->create_publisher<can_msgs::msg::Frame>(output_can_frame_topic_, rclcpp::QoS(10));
+      this->create_publisher<can_msgs::msg::Frame>("~/output/to_can_bus", rclcpp::QoS(10));
   }
 
   if (publish_motion_input_) {

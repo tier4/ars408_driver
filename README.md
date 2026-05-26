@@ -69,16 +69,19 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
   - The bool parameter to determine output publishing behavior.
   - If this parameter is set to false (default value), the driver will publish output after receiving a complete cycle of sequential data from the CAN data topic.
   - If this parameter is set to true, the driver will publish output every time data is received from the CAN data topic.
-- `size_x`
-  - The assumed x-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
-- `size_y`
-  - The assumed y-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
+- `size_x` / `size_y`
+  - Fallback object dimensions [m] when 0x60D length/width are not available.
+- `use_radar_reported_dimensions`
+  - When true, `RadarTrack.size` uses length/width from 0x60D.
+- `inflate_covariance_by_existence_probability`
+  - When true, scales position/velocity covariance by `(1 / existence_probability)^2` from 0x60C (no dedicated field in `radar_msgs`).
+- **Note:** `radar_msgs/RadarTrack` has no orientation field; Autoware derives heading from velocity in `radar_tracks_msgs_converter`.
 - `radar_id`
   - Sensor ID of this node instance (0–7). Launch one node per radar with a distinct `radar_id`.
 - `publish_objects_name` / `publish_scan_name`
   - Topic names for radar tracks and scan output.
 - `publish_motion_input`
-  - When true, publish 0x300/0x301 on `~/output/to_can_bus` from odometry at `motion_publish_rate_hz`.
+  - When true, publish 0x300/0x301 on `~/output/to_can_bus` from odometry at `motion_publish_rate_hz`. Remap the topic in launch only (not a ROS parameter).
 - `motion_publish_rate_hz`, `speed_standstill_threshold_mps`, `speed_moving_threshold_mps`
   - Motion CAN encoding options (see `ars408_driver.param.yaml`).
 - `publish_radar_cfg_on_startup`, `radar_cfg_startup_delay_sec`, `radar_cfg_retry_interval_sec`

@@ -17,6 +17,7 @@
 
 #include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_driver.hpp"
+#include "ars408_ros/ars408_radar_msgs_conversion.hpp"
 #include "can_msgs/msg/frame.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "radar_msgs/msg/radar_scan.hpp"
@@ -52,6 +53,7 @@ class PeContinentalArs408Node : public rclcpp::Node
   bool sequential_publish_;
   double size_x_;
   double size_y_;
+  ars408::radar_msgs_conversion::TrackConversionOptions track_conversion_options_;
   uint8_t radar_id_;
   std::string publish_objects_name_;
   std::string publish_scan_name_;
@@ -59,7 +61,6 @@ class PeContinentalArs408Node : public rclcpp::Node
   double can_receive_check_timeout_sec_;
 
   bool publish_motion_input_;
-  std::string output_can_frame_topic_;
   double motion_publish_rate_hz_;
   double speed_standstill_threshold_mps_;
   double speed_moving_threshold_mps_;

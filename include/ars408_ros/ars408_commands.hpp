@@ -588,7 +588,9 @@ public:
   float RelativeLateralVelocityYRms;
   float RelativeLongitudinalAccelerationXRms;
   float RelativeLateralAccelerationYRms;
+  float OrientationAngleRms;
   float ExistenceProbability; /*Probability of existence*/
+  uint8_t MeasState;
   Obj_2_Quality() : RadarCommand(ars408::OBJ_QUALITY_00) {}
 };
 

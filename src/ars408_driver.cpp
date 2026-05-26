@@ -57,7 +57,16 @@ void Ars408Driver::UpdateObjectQuality(
   auto object_iterator = radar_objects_.find(in_object_id);
   if (object_iterator != radar_objects_.end()) {
     ars408::RadarObject object_found = object_iterator->second;
+    object_found.has_quality = true;
     object_found.probability_existence = in_object_quality.ExistenceProbability;
+    object_found.dist_long_rms_m = in_object_quality.LongitudinalDistanceXRms;
+    object_found.dist_lat_rms_m = in_object_quality.LateralDistanceYRms;
+    object_found.vrel_long_rms_mps = in_object_quality.RelativeLongitudinalVelocityXRms;
+    object_found.vrel_lat_rms_mps = in_object_quality.RelativeLateralVelocityYRms;
+    object_found.arel_long_rms_mps2 = in_object_quality.RelativeLongitudinalAccelerationXRms;
+    object_found.arel_lat_rms_mps2 = in_object_quality.RelativeLateralAccelerationYRms;
+    object_found.orientation_rms_deg = in_object_quality.OrientationAngleRms;
+    object_found.meas_state = in_object_quality.MeasState;
     radar_objects_.at(object_iterator->first) = object_found;
     updated_objects_quality_++;
   }

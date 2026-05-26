@@ -109,6 +109,15 @@ public:
   float length;  /*Length of the tracked object*/
   float width;  /*Width of the tracked object*/
   float probability_existence;
+  bool has_quality{false};
+  float dist_long_rms_m{0.f};
+  float dist_lat_rms_m{0.f};
+  float vrel_long_rms_mps{0.f};
+  float vrel_lat_rms_mps{0.f};
+  float arel_long_rms_mps2{0.f};
+  float arel_lat_rms_mps2{0.f};
+  float orientation_rms_deg{0.f};
+  uint8_t meas_state{0};
 };
 }  // namespace ars408
 

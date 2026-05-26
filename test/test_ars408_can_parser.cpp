@@ -116,7 +116,8 @@ TEST(Ars408CanParser, ParseObjectQualityExistenceProbability)
 {
   std::array<uint8_t, 8> data{};
   data[0] = 3;
-  data[6] = static_cast<uint8_t>(0x08);  // ProbExists = 2 -> 50%
+  // Obj_ProbOfExist at bit 53 (Intel): index 2 -> 50%
+  data[6] = static_cast<uint8_t>(0x40);
 
   const ars408::Obj_2_Quality quality = ars408::can_parser::ParseObjectQuality(data);
   EXPECT_EQ(quality.Id, 3u);

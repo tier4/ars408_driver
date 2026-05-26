@@ -14,10 +14,64 @@
 
 #include "ars408_ros/ars408_can_parser.hpp"
 
+#include <algorithm>
+
 namespace ars408
 {
 namespace can_parser
 {
+namespace
+{
+
+uint32_t unpackSignalIntel(
+  const std::array<uint8_t, 8> & data, const uint16_t start_bit, const uint8_t length)
+{
+  uint32_t raw = 0;
+  for (uint8_t i = 0; i < length; ++i) {
+    const uint16_t bit_index = start_bit + i;
+    if ((data[bit_index / 8] >> (bit_index % 8)) & 0x01u) {
+      raw |= (1u << i);
+    }
+  }
+  return raw;
+}
+
+// Table 45 upper bounds (Standard Radar Interface v1.12).
+constexpr float kRmsDistanceM[] = {
+  0.005f, 0.007f, 0.010f, 0.014f, 0.020f, 0.029f, 0.041f, 0.058f, 0.082f, 0.116f, 0.165f,
+  0.234f, 0.332f, 0.471f, 0.669f, 0.949f, 1.346f, 1.909f, 2.709f, 3.843f, 5.452f, 7.732f,
+  10.98f, 15.57f, 22.10f, 31.35f, 44.44f, 63.00f, 89.32f, 126.7f, 179.7f, 255.0f};
+constexpr float kRmsVelocityMps[] = {
+  0.005f, 0.006f, 0.008f, 0.011f, 0.014f, 0.018f, 0.023f, 0.029f, 0.038f, 0.049f, 0.063f,
+  0.081f, 0.105f, 0.135f, 0.174f, 0.224f, 0.288f, 0.371f, 0.478f, 0.616f, 0.794f, 1.023f,
+  1.317f, 1.697f, 2.187f, 2.817f, 3.630f, 4.676f, 6.025f, 7.762f, 10.00f, 12.90f};
+constexpr float kRmsOrientationDeg[] = {
+  0.005f, 0.007f, 0.010f, 0.014f, 0.020f, 0.029f, 0.041f, 0.058f, 0.082f, 0.116f, 0.165f,
+  0.234f, 0.332f, 0.471f, 0.669f, 0.949f, 1.346f, 1.909f, 2.709f, 3.843f, 5.452f, 7.732f,
+  10.98f, 15.57f, 22.10f, 31.35f, 44.44f, 63.00f, 89.32f, 126.7f, 179.7f, 255.0f};
+
+float LookupRms(const float * table, const size_t table_size, const uint8_t index)
+{
+  const size_t idx = std::min(static_cast<size_t>(index), table_size - 1u);
+  return table[idx];
+}
+
+float DecodeExistenceProbability(const uint8_t prob_index)
+{
+  switch (prob_index) {
+    case 0x00u: return 0.f;
+    case 0x01u: return 0.25f;
+    case 0x02u: return 0.5f;
+    case 0x03u: return 0.75f;
+    case 0x04u: return 0.9f;
+    case 0x05u: return 0.99f;
+    case 0x06u: return 0.999f;
+    case 0x07u: return 1.f;
+    default: return 0.f;
+  }
+}
+
+}  // namespace
 
 bool HasMinimumDlc(const uint8_t dlc, const uint8_t min_length)
 {
@@ -96,19 +150,36 @@ RadarObject ParseObjectGeneral(
 Obj_2_Quality ParseObjectQuality(const std::array<uint8_t, 8> & in_can_data)
 {
   Obj_2_Quality obj_quality;
-  obj_quality.Id = in_can_data[0];
-  const uint8_t prob_tmp = (in_can_data[6] & 0x1Cu) >> 2u;
-  switch (prob_tmp) {
-    case 0x00u: obj_quality.ExistenceProbability = 0; break;
-    case 0x01u: obj_quality.ExistenceProbability = 0.25; break;
-    case 0x02u: obj_quality.ExistenceProbability = 0.5; break;
-    case 0x03u: obj_quality.ExistenceProbability = 0.75; break;
-    case 0x04u: obj_quality.ExistenceProbability = 0.9; break;
-    case 0x05u: obj_quality.ExistenceProbability = 0.99; break;
-    case 0x06u: obj_quality.ExistenceProbability = 0.999; break;
-    case 0x07u: obj_quality.ExistenceProbability = 1; break;
-    default: obj_quality.ExistenceProbability = 0; break;
-  }
+  obj_quality.Id = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 0, 8));
+
+  const uint8_t dist_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 11, 5));
+  const uint8_t vrel_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 17, 5));
+  const uint8_t dist_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 22, 5));
+  const uint8_t vrel_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 28, 5));
+  const uint8_t arel_lat_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 34, 5));
+  const uint8_t arel_long_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 39, 5));
+  const uint8_t orient_idx = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 45, 5));
+
+  obj_quality.LongitudinalDistanceXRms =
+    LookupRms(kRmsDistanceM, sizeof(kRmsDistanceM) / sizeof(float), dist_long_idx);
+  obj_quality.LateralDistanceYRms =
+    LookupRms(kRmsDistanceM, sizeof(kRmsDistanceM) / sizeof(float), dist_lat_idx);
+  obj_quality.RelativeLongitudinalVelocityXRms =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), vrel_long_idx);
+  obj_quality.RelativeLateralVelocityYRms =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), vrel_lat_idx);
+  obj_quality.RelativeLongitudinalAccelerationXRms =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), arel_long_idx);
+  obj_quality.RelativeLateralAccelerationYRms =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), arel_lat_idx);
+  obj_quality.OrientationAngleRms =
+    LookupRms(
+    kRmsOrientationDeg, sizeof(kRmsOrientationDeg) / sizeof(float), orient_idx);
+
+  obj_quality.MeasState = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 50, 3));
+  const uint8_t prob_index = static_cast<uint8_t>(unpackSignalIntel(in_can_data, 53, 3));
+  obj_quality.ExistenceProbability = DecodeExistenceProbability(prob_index);
+
   return obj_quality;
 }
 
