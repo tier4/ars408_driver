@@ -157,5 +157,16 @@ Obj_3_Extended ParseObjectExtended(const std::array<uint8_t, 8> & in_can_data)
   return obj_extended;
 }
 
+VersionId ParseVersionId(const std::array<uint8_t, 8> & in_can_data)
+{
+  VersionId version;
+  version.major = in_can_data[0];
+  version.minor = in_can_data[1];
+  version.patch = in_can_data[2];
+  version.country_code_restricted = (in_can_data[3] & 0x01u) != 0u;
+  version.extended_range = (in_can_data[3] & 0x02u) != 0u;
+  return version;
+}
+
 }  // namespace can_parser
 }  // namespace ars408

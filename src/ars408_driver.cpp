@@ -112,6 +112,21 @@ bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state)
   return false;
 }
 
+bool Ars408Driver::GetVersionId(ars408::can_parser::VersionId & out_version_id)
+{
+  if (valid_version_id_) {
+    out_version_id = current_version_id_;
+    return true;
+  }
+  return false;
+}
+
+void Ars408Driver::ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  current_version_id_ = can_parser::ParseVersionId(in_can_data);
+  valid_version_id_ = true;
+}
+
 void Ars408Driver::RegisterDetectedObjectsCallback(
   std::function<void(
     const std::unordered_map<uint8_t, ars408::RadarObject> &,
@@ -223,6 +238,18 @@ std::string Ars408Driver::Parse(
       if (can_parser::HasMinimumDlc(in_data_length, ars408::OBJ_EXTENDED_BYTES)) {
         const ars408::Obj_3_Extended object_ext_info = ParseObject3_Extended(in_can_data);
         UpdateObjectExtInfo(object_ext_info.Id, object_ext_info);
+      }
+      break;
+    case ars408::VERSION_ID_00:
+    case ars408::VERSION_ID_01:
+    case ars408::VERSION_ID_02:
+    case ars408::VERSION_ID_03:
+    case ars408::VERSION_ID_04:
+    case ars408::VERSION_ID_05:
+    case ars408::VERSION_ID_06:
+    case ars408::VERSION_ID_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::VERSION_ID_BYTES)) {
+        ParseVersionIdFrame(in_can_data);
       }
       break;
     default:

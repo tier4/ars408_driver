@@ -16,3 +16,18 @@
     motion_publish_rate_hz: 50.0
     speed_standstill_threshold_mps: 0.5
     speed_moving_threshold_mps: 2.0
+    publish_radar_cfg_on_startup: true
+    radar_cfg_startup_delay_sec: 1.0
+    radar_cfg_retry_interval_sec: 1.0
+    publish_radar_state_diagnostics: true
+    radar_cfg:
+      max_distance_m: 260
+      output_type: "objects"       # none | objects | clusters
+      send_quality: true
+      send_ext_info: true
+      sort_index: "by_range"       # no_sort | by_range | by_rcs
+      radar_power: "minus_3db"     # minus_3db | minus_6db | minus_9db only (standard not allowed: Japan radio regulations)
+      store_in_nvm: false
+      update_sensor_id: false
+      rcs_threshold: "normal"      # normal | high_sensitivity
+      ctrl_relay: false

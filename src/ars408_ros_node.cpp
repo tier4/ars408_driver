@@ -17,16 +17,58 @@
 #include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_can_parser.hpp"
 #include "ars408_ros/ars408_constants.hpp"
+#include "ars408_ros/ars408_radar_cfg_verify.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <cmath>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
 namespace
 {
 constexpr double kRadToDeg = 180.0 / M_PI;
+
+ars408::can_encoder::OutputType ParseOutputType(const std::string & value)
+{
+  if (value == "none") {
+    return ars408::can_encoder::OutputType::NONE;
+  }
+  if (value == "objects") {
+    return ars408::can_encoder::OutputType::OBJECTS;
+  }
+  if (value == "clusters") {
+    return ars408::can_encoder::OutputType::CLUSTERS;
+  }
+  throw std::invalid_argument("radar_cfg.output_type must be none, objects, or clusters");
+}
+
+ars408::can_encoder::SortIndex ParseSortIndex(const std::string & value)
+{
+  if (value == "no_sort") {
+    return ars408::can_encoder::SortIndex::NO_SORT;
+  }
+  if (value == "by_range") {
+    return ars408::can_encoder::SortIndex::BY_RANGE;
+  }
+  if (value == "by_rcs") {
+    return ars408::can_encoder::SortIndex::BY_RCS;
+  }
+  throw std::invalid_argument("radar_cfg.sort_index must be no_sort, by_range, or by_rcs");
+}
+
+ars408::can_encoder::RcsThreshold ParseRcsThreshold(const std::string & value)
+{
+  if (value == "normal") {
+    return ars408::can_encoder::RcsThreshold::NORMAL;
+  }
+  if (value == "high_sensitivity") {
+    return ars408::can_encoder::RcsThreshold::HIGH_SENSITIVITY;
+  }
+  throw std::invalid_argument("radar_cfg.rcs_threshold must be normal or high_sensitivity");
+}
+
 }  // namespace
 
 PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
@@ -35,6 +77,11 @@ PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & nod
   SetParameter();
   GenerateUUIDTable();
   Run();
+}
+
+bool PeContinentalArs408Node::IsRadarOutputEnabled() const
+{
+  return !require_radar_cfg_sync_ || radar_cfg_applied_;
 }
 
 void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg)
@@ -66,6 +113,10 @@ void PeContinentalArs408Node::OdometryCallback(const nav_msgs::msg::Odometry::Sh
 
 void PeContinentalArs408Node::PublishMotionCanFrames()
 {
+  if (!IsRadarOutputEnabled()) {
+    return;
+  }
+
   std::optional<nav_msgs::msg::Odometry> odometry;
   {
     std::lock_guard<std::mutex> lock(odometry_mutex_);
@@ -115,6 +166,178 @@ void PeContinentalArs408Node::PublishMotionCanFrames()
   can_tx_publisher_->publish(yaw_frame);
 }
 
+void PeContinentalArs408Node::PublishRadarCfg()
+{
+  if (!can_tx_publisher_) {
+    return;
+  }
+
+  const auto payload = ars408::can_encoder::EncodeRadarCfg(radar_cfg_params_);
+
+  can_msgs::msg::Frame cfg_frame;
+  cfg_frame.header.stamp = this->now();
+  cfg_frame.id = ars408::can_encoder::CanIdForSensor(ars408::RADAR_CFG_00, radar_id_);
+  cfg_frame.dlc = 8;
+  cfg_frame.is_extended = false;
+  cfg_frame.is_rtr = false;
+  cfg_frame.is_error = false;
+  cfg_frame.data = payload;
+
+  can_tx_publisher_->publish(cfg_frame);
+  last_radar_cfg_send_time_ = this->now();
+
+  RCLCPP_INFO(
+    get_logger(),
+    "Published RadarCfg (0x200) for sensor ID %d (max_distance=%u m)",
+    radar_id_, radar_cfg_params_.max_distance_m);
+}
+
+void PeContinentalArs408Node::UpdateRadarCfgSync()
+{
+  if (!require_radar_cfg_sync_ || radar_cfg_applied_) {
+    return;
+  }
+
+  ars408::RadarState state;
+  if (ars408_driver_.GetCurrentRadarState(state)) {
+    std::string detail;
+    if (ars408::radar_cfg_verify::RadarStateMatchesConfig(
+        state, radar_cfg_params_, radar_id_, &detail))
+    {
+      radar_cfg_applied_ = true;
+      radar_cfg_mismatch_detail_.clear();
+      RCLCPP_INFO(
+        get_logger(), "RadarCfg verified on sensor ID %d (matches YAML)", radar_id_);
+      return;
+    }
+    radar_cfg_mismatch_detail_ = detail;
+  } else {
+    radar_cfg_mismatch_detail_ = "RadarState (0x201) not received yet";
+  }
+
+  const rclcpp::Time now = this->now();
+  const bool should_send = !last_radar_cfg_send_time_.has_value() ||
+    (now - last_radar_cfg_send_time_.value()).seconds() >= radar_cfg_retry_interval_sec_;
+  if (should_send) {
+    RCLCPP_WARN(
+      get_logger(), "RadarCfg mismatch or pending (%s); re-sending 0x200",
+      radar_cfg_mismatch_detail_.c_str());
+    PublishRadarCfg();
+  }
+}
+
+void PeContinentalArs408Node::PublishRadarCfgDiagnostics()
+{
+  if (!require_radar_cfg_sync_) {
+    return;
+  }
+
+  DiagnosticArray diag_array;
+  diag_array.header.stamp = this->now();
+
+  DiagnosticStatus diag;
+  diag.name = "ars408_radar_cfg";
+  diag.hardware_id = output_frame_ + "_id" + std::to_string(radar_id_);
+
+  if (radar_cfg_applied_) {
+    diag.level = DiagnosticStatus::OK;
+    diag.message = "RadarCfg matches YAML parameters";
+  } else if (radar_cfg_mismatch_detail_.find("not received") != std::string::npos) {
+    diag.level = DiagnosticStatus::STALE;
+    diag.message = "Waiting for RadarCfg to apply (no RadarState yet)";
+  } else {
+    diag.level = DiagnosticStatus::WARN;
+    diag.message = "RadarCfg does not match YAML; re-sending 0x200";
+  }
+
+  auto add_kv = [&](const std::string & key, const std::string & value) {
+    diagnostic_msgs::msg::KeyValue kv;
+    kv.key = key;
+    kv.value = value;
+    diag.values.push_back(kv);
+  };
+
+  add_kv("cfg_applied", radar_cfg_applied_ ? "true" : "false");
+  add_kv("mismatch_detail", radar_cfg_mismatch_detail_);
+  if (last_radar_cfg_send_time_.has_value()) {
+    add_kv(
+      "last_cfg_send_age_sec",
+      std::to_string((this->now() - last_radar_cfg_send_time_.value()).seconds()));
+  }
+
+  diag_array.status.push_back(diag);
+  diagnostics_pub_->publish(diag_array);
+}
+
+void PeContinentalArs408Node::PublishRadarStateDiagnostics()
+{
+  if (!publish_radar_state_diagnostics_ || !IsRadarOutputEnabled()) {
+    return;
+  }
+
+  DiagnosticArray diag_array;
+  diag_array.header.stamp = this->now();
+
+  DiagnosticStatus diag;
+  diag.name = "ars408_radar_state";
+  diag.hardware_id = output_frame_ + "_id" + std::to_string(radar_id_);
+
+  ars408::RadarState state;
+  if (!ars408_driver_.GetCurrentRadarState(state)) {
+    diag.level = DiagnosticStatus::STALE;
+    diag.message = "RadarState (0x201) not received yet";
+    diag_array.status.push_back(diag);
+    diagnostics_pub_->publish(diag_array);
+    return;
+  }
+
+  diag.level = DiagnosticStatus::OK;
+  diag.message = "RadarState OK";
+
+  if (
+    state.PersistentError || state.Interference || state.TemperatureError ||
+    state.TemporaryError || state.VoltageError)
+  {
+    diag.level = DiagnosticStatus::ERROR;
+    diag.message = "Radar reported hardware or environment error";
+  } else if (state.EgoMotionRxStatus != ars408::RadarState::INPUT_OK) {
+    diag.level = DiagnosticStatus::WARN;
+    diag.message = "Ego motion input not OK on radar";
+  }
+
+  auto add_kv = [&](const std::string & key, const std::string & value) {
+    diagnostic_msgs::msg::KeyValue kv;
+    kv.key = key;
+    kv.value = value;
+    diag.values.push_back(kv);
+  };
+
+  add_kv("sensor_id", std::to_string(state.SensorID));
+  add_kv("max_distance_m", std::to_string(state.MaxDistance));
+  add_kv("output_type", std::to_string(static_cast<int>(state.OutputType)));
+  add_kv("send_quality", state.SendQuality == ars408::RadarState::ACTIVE ? "true" : "false");
+  add_kv("send_ext_info", state.SendExtInfo == ars408::RadarState::ACTIVE ? "true" : "false");
+  add_kv(
+    "ego_motion_rx_status", std::to_string(static_cast<int>(state.EgoMotionRxStatus)));
+  add_kv("persistent_error", state.PersistentError ? "true" : "false");
+  add_kv("interference", state.Interference ? "true" : "false");
+  add_kv("voltage_error", state.VoltageError ? "true" : "false");
+  add_kv("nvm_read_status", state.NvmReadStatus ? "success" : "failed");
+  add_kv("nvm_write_status", state.NvmWriteStatus ? "success" : "failed");
+
+  ars408::can_parser::VersionId version;
+  if (ars408_driver_.GetVersionId(version)) {
+    add_kv(
+      "firmware_version",
+      std::to_string(version.major) + "." + std::to_string(version.minor) + "." +
+      std::to_string(version.patch));
+    add_kv("extended_range", version.extended_range ? "true" : "false");
+  }
+
+  diag_array.status.push_back(diag);
+  diagnostics_pub_->publish(diag_array);
+}
+
 void PeContinentalArs408Node::OnCanReceiveCheck()
 {
   const rclcpp::Time current_time = this->now();
@@ -152,6 +375,51 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
   diag_array.status.push_back(diag);
 
   diagnostics_pub_->publish(diag_array);
+
+  UpdateRadarCfgSync();
+  PublishRadarCfgDiagnostics();
+  PublishRadarStateDiagnostics();
+}
+
+ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams()
+{
+  ars408::can_encoder::RadarCfgParams params;
+
+  const bool update_sensor_id =
+    declare_parameter<bool>("radar_cfg.update_sensor_id", false);
+  params.update_sensor_id = update_sensor_id;
+  params.update_max_distance = true;
+  params.update_radar_power = true;
+  params.update_output_type = true;
+  params.update_send_quality = true;
+  params.update_send_ext_info = true;
+  params.update_sort_index = true;
+  params.update_store_in_nvm = true;
+  params.update_ctrl_relay = true;
+  params.update_rcs_threshold = true;
+
+  params.max_distance_m = static_cast<uint16_t>(
+    declare_parameter<int>("radar_cfg.max_distance_m", 260));
+  params.sensor_id = radar_id_;
+  params.output_type = ParseOutputType(
+    declare_parameter<std::string>("radar_cfg.output_type", "objects"));
+  // Standard (0 dB) is not selectable (Japan radio regulations); attenuated levels only.
+  params.radar_power = ars408::can_encoder::ParseRadarPowerSetting(
+    declare_parameter<std::string>("radar_cfg.radar_power", "minus_3db"));
+  params.send_quality = declare_parameter<bool>("radar_cfg.send_quality", true);
+  params.send_ext_info = declare_parameter<bool>("radar_cfg.send_ext_info", true);
+  params.sort_index = ParseSortIndex(
+    declare_parameter<std::string>("radar_cfg.sort_index", "by_range"));
+  params.store_in_nvm = declare_parameter<bool>("radar_cfg.store_in_nvm", false);
+  params.rcs_threshold = ParseRcsThreshold(
+    declare_parameter<std::string>("radar_cfg.rcs_threshold", "normal"));
+  params.ctrl_relay = declare_parameter<bool>("radar_cfg.ctrl_relay", false);
+
+  if (params.max_distance_m < 2 || params.max_distance_m > 2046) {
+    throw std::invalid_argument("radar_cfg.max_distance_m must be in [2, 2046]");
+  }
+
+  return params;
 }
 
 uint32_t PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(
@@ -213,6 +481,10 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects,
   const rclcpp::Time & stamp)
 {
+  if (!IsRadarOutputEnabled()) {
+    return;
+  }
+
   radar_msgs::msg::RadarTracks output_objects;
   output_objects.header.frame_id = output_frame_;
   output_objects.header.stamp = stamp;
@@ -285,6 +557,25 @@ void PeContinentalArs408Node::SetParameter()
   if (motion_publish_rate_hz_ <= 0.0) {
     throw std::invalid_argument("motion_publish_rate_hz must be positive");
   }
+
+  require_radar_cfg_sync_ = declare_parameter<bool>("publish_radar_cfg_on_startup", true);
+  radar_cfg_startup_delay_sec_ =
+    declare_parameter<double>("radar_cfg_startup_delay_sec", 1.0);
+  radar_cfg_retry_interval_sec_ =
+    declare_parameter<double>("radar_cfg_retry_interval_sec", 1.0);
+  publish_radar_state_diagnostics_ =
+    declare_parameter<bool>("publish_radar_state_diagnostics", true);
+
+  if (radar_cfg_retry_interval_sec_ <= 0.0) {
+    throw std::invalid_argument("radar_cfg_retry_interval_sec must be positive");
+  }
+
+  if (require_radar_cfg_sync_) {
+    radar_cfg_applied_ = false;
+    radar_cfg_params_ = LoadRadarCfgParams();
+  } else {
+    radar_cfg_applied_ = true;
+  }
 }
 
 void PeContinentalArs408Node::Run()
@@ -314,10 +605,13 @@ void PeContinentalArs408Node::Run()
     std::chrono::milliseconds(static_cast<int64_t>(1000.0 / can_receive_check_rate_hz_)),
     std::bind(&PeContinentalArs408Node::OnCanReceiveCheck, this));
 
-  if (publish_motion_input_) {
+  const bool needs_can_tx = publish_motion_input_ || require_radar_cfg_sync_;
+  if (needs_can_tx) {
     can_tx_publisher_ =
       this->create_publisher<can_msgs::msg::Frame>(output_can_frame_topic_, rclcpp::QoS(10));
+  }
 
+  if (publish_motion_input_) {
     odometry_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
       "~/input/odometry", rclcpp::QoS(10),
       std::bind(&PeContinentalArs408Node::OdometryCallback, this, std::placeholders::_1));
@@ -326,6 +620,18 @@ void PeContinentalArs408Node::Run()
     motion_publish_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
       std::bind(&PeContinentalArs408Node::PublishMotionCanFrames, this));
+  }
+
+  if (require_radar_cfg_sync_) {
+    radar_cfg_startup_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(radar_cfg_startup_delay_sec_)),
+      [this]() {
+        if (!radar_cfg_applied_) {
+          PublishRadarCfg();
+        }
+        radar_cfg_startup_timer_->cancel();
+      });
   }
 }
 

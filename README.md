@@ -24,22 +24,11 @@ $ colcon build
 sudo ip link set canX up type can bitrate 500000
 ```
 
-4. setup hardware (Only the first time or when the hardware configuration changes)
+4. Configure the radar (optional if using driver startup RadarCfg)
 
-```sh
-# Object detection with all extended properties
-# Please configure the Sensor ID and related settings for the CAN interfaces (as in steps 3 and 4)
-# Set Y to the value (0-7) that corresponds to the Sensor ID configured in the hardware
-# On first-time hardware setup, the Sensor ID is 0, so set Y to 0
-cansend canX 2Y0#FA000000089C0000  # Set Sensor ID from Y to 0
-cansend canX 2Y0#FA000000099C0000  # Set Sensor ID from Y to 1
-cansend canX 2Y0#FA0000000A9C0000  # Set Sensor ID from Y to 2
-cansend canX 2Y0#FA0000000B9C0000  # Set Sensor ID from Y to 3
-cansend canX 2Y0#FA0000000C9C0000  # Set Sensor ID from Y to 4
-cansend canX 2Y0#FA0000000D9C0000  # Set Sensor ID from Y to 5
-cansend canX 2Y0#FA0000000E9C0000  # Set Sensor ID from Y to 6
-cansend canX 2Y0#FA0000000F9C0000  # Set Sensor ID from Y to 7
-```
+By default the driver sends **RadarCfg (0x200)** once at startup from `config/ars408_driver.param.yaml` (`radar_cfg.*`). Adjust `max_distance_m`, `output_type`, `send_quality`, `send_ext_info`, etc. there.
+
+For first-time **Sensor ID** programming on the bench only, set `radar_cfg.update_sensor_id: true` and use the factory default ID in `radar_id`, or use manual `cansend` as in the Continental documentation.
 
 5. Launch CAN bridge (outside this package, e.g. `ros2_socketcan`) and the driver
 
@@ -59,7 +48,9 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
 ### Output
 
 - `~/output/to_can_bus` (remap to `to_can_bus` for `socket_can_bridge`)
+  - RadarCfg (0x200) at startup when `publish_radar_cfg_on_startup` is true
   - Motion CAN frames (0x300 Speed Information, 0x301 Yaw Rate Information)
+- `/diagnostics` — radar state (`0x201`) and firmware version (`0x700`) when enabled
 - `output/objects`
   - `RadarTrack`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTrack.msg>
   - If you want to visualize, you should choose `RadarTrack` and visualize in rviz using [radar_tracks_msgs_converter](https://github.com/autowarefoundation/autoware.universe/tree/main/perception/radar_tracks_msgs_converter) with autoware.universe.
@@ -90,6 +81,13 @@ ros2 launch pe_ars408_ros continental_ars408.launch.xml
   - When true, publish 0x300/0x301 on `~/output/to_can_bus` from odometry at `motion_publish_rate_hz`.
 - `motion_publish_rate_hz`, `speed_standstill_threshold_mps`, `speed_moving_threshold_mps`
   - Motion CAN encoding options (see `ars408_driver.param.yaml`).
+- `publish_radar_cfg_on_startup`, `radar_cfg_startup_delay_sec`, `radar_cfg_retry_interval_sec`
+  - Send RadarCfg (0x200) after launch; verify against `0x201` RadarState; re-send on mismatch until YAML matches.
+  - While not verified, `RadarTracks` / `RadarScan` and motion CAN TX are suppressed; `ars408_radar_cfg` is published on `/diagnostics`.
+- `publish_radar_state_diagnostics`
+  - Publish `ars408_radar_state` on `/diagnostics` from 0x201 / 0x700.
+- `radar_cfg.*` (nested, see `config/ars408_driver.param.yaml`)
+  - `max_distance_m`, `output_type` (`none` | `objects` | `clusters`), `send_quality`, `send_ext_info`, `sort_index` (`no_sort` | `by_range` | `by_rcs`), `radar_power` (`minus_3db` | `minus_6db` | `minus_9db`; `standard` not allowed for Japan radio regulations), `store_in_nvm`, `rcs_threshold` (`normal` | `high_sensitivity`), `ctrl_relay`, `update_sensor_id`.
 - `can_receive_check_rate_hz`
   - The parameter specifies the check/poll rate of the CAN receive status [Hz].
 - `can_receive_check_timeout_sec`

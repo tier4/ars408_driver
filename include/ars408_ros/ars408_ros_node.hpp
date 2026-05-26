@@ -15,6 +15,7 @@
 #ifndef ARS408_ROS__ARS408_ROS_NODE_HPP_
 #define ARS408_ROS__ARS408_ROS_NODE_HPP_
 
+#include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_driver.hpp"
 #include "can_msgs/msg/frame.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -66,21 +67,38 @@ class PeContinentalArs408Node : public rclcpp::Node
   std::optional<nav_msgs::msg::Odometry> latest_odometry_;
   std::mutex odometry_mutex_;
 
+  bool require_radar_cfg_sync_{false};
+  bool radar_cfg_applied_{true};
+  double radar_cfg_startup_delay_sec_;
+  double radar_cfg_retry_interval_sec_;
+  bool publish_radar_state_diagnostics_;
+  ars408::can_encoder::RadarCfgParams radar_cfg_params_;
+  std::optional<rclcpp::Time> last_radar_cfg_send_time_;
+  std::string radar_cfg_mismatch_detail_;
+
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
   rclcpp::TimerBase::SharedPtr can_receive_check_timer_;
   rclcpp::TimerBase::SharedPtr motion_publish_timer_;
+  rclcpp::TimerBase::SharedPtr radar_cfg_startup_timer_;
   std::optional<rclcpp::Time> can_receive_last_time_;
   rclcpp::Time last_warn_time_;
 
   ars408::Ars408Driver ars408_driver_{};
 
+  bool IsRadarOutputEnabled() const;
+
   void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
   void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
   void PublishMotionCanFrames();
+  void PublishRadarCfg();
+  void UpdateRadarCfgSync();
   void OnCanReceiveCheck();
+  void PublishRadarCfgDiagnostics();
+  void PublishRadarStateDiagnostics();
   void GenerateUUIDTable();
   void SetParameter();
+  ars408::can_encoder::RadarCfgParams LoadRadarCfgParams();
 
   radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
   radar_msgs::msg::RadarReturn ConvertRadarObjectToRadarReturn(

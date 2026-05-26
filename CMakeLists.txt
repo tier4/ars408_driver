@@ -18,6 +18,7 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(pe_ars408_parser SHARED
   src/ars408_can_parser.cpp
   src/ars408_can_encoder.cpp
+  src/ars408_radar_cfg_verify.cpp
   src/ars408_driver.cpp
 )
 
@@ -48,6 +49,16 @@ if(BUILD_TESTING)
   ament_add_gtest(test_ars408_can_encoder test/test_ars408_can_encoder.cpp)
   if(TARGET test_ars408_can_encoder)
     target_link_libraries(test_ars408_can_encoder pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_version_id_parser test/test_ars408_version_id_parser.cpp)
+  if(TARGET test_ars408_version_id_parser)
+    target_link_libraries(test_ars408_version_id_parser pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_radar_cfg_verify test/test_ars408_radar_cfg_verify.cpp)
+  if(TARGET test_ars408_radar_cfg_verify)
+    target_link_libraries(test_ars408_radar_cfg_verify pe_ars408_parser)
   endif()
 endif()
 

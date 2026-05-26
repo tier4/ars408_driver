@@ -43,6 +43,17 @@ Obj_2_Quality ParseObjectQuality(const std::array<uint8_t, 8> & in_can_data);
 
 Obj_3_Extended ParseObjectExtended(const std::array<uint8_t, 8> & in_can_data);
 
+struct VersionId
+{
+  uint8_t major{0};
+  uint8_t minor{0};
+  uint8_t patch{0};
+  bool extended_range{false};
+  bool country_code_restricted{false};
+};
+
+VersionId ParseVersionId(const std::array<uint8_t, 8> & in_can_data);
+
 }  // namespace can_parser
 }  // namespace ars408
 

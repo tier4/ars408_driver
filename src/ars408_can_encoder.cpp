@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace ars408
 {
@@ -43,6 +44,27 @@ uint32_t CanIdForSensor(const uint32_t base_id, const uint8_t sensor_id)
   return base_id + (static_cast<uint32_t>(sensor_id) * 0x10u);
 }
 
+RadarPower ParseRadarPowerSetting(const std::string & value)
+{
+  if (value == "standard") {
+    throw std::invalid_argument(
+      "radar_cfg.radar_power must not be \"standard\" (Japan radio regulations). "
+      "Use minus_3db, minus_6db, or minus_9db");
+  }
+  if (value == "minus_3db") {
+    return RadarPower::MINUS_3DB;
+  }
+  if (value == "minus_6db") {
+    return RadarPower::MINUS_6DB;
+  }
+  if (value == "minus_9db") {
+    return RadarPower::MINUS_9DB;
+  }
+  throw std::invalid_argument(
+    "radar_cfg.radar_power must be minus_3db, minus_6db, or minus_9db");
+}
+
+
 std::array<uint8_t, 8> EncodeSpeedInformation(
   const float speed_mps, const SpeedDirection direction)
 {
@@ -64,6 +86,77 @@ std::array<uint8_t, 8> EncodeYawRateInformation(const float yaw_rate_deg_s)
                          0xFFFFu;
 
   packSignalIntel(data, 8, 16, raw_yaw);
+  return data;
+}
+
+std::array<uint8_t, 8> EncodeRadarCfg(const RadarCfgParams & params)
+{
+  std::array<uint8_t, 8> data{};
+
+  if (params.update_max_distance) {
+    packSignalIntel(data, 0, 1, 1);
+  }
+  if (params.update_sensor_id) {
+    packSignalIntel(data, 1, 1, 1);
+  }
+  if (params.update_radar_power) {
+    packSignalIntel(data, 2, 1, 1);
+  }
+  if (params.update_output_type) {
+    packSignalIntel(data, 3, 1, 1);
+  }
+  if (params.update_send_quality) {
+    packSignalIntel(data, 4, 1, 1);
+  }
+  if (params.update_send_ext_info) {
+    packSignalIntel(data, 5, 1, 1);
+  }
+  if (params.update_sort_index) {
+    packSignalIntel(data, 6, 1, 1);
+  }
+  if (params.update_store_in_nvm) {
+    packSignalIntel(data, 7, 1, 1);
+  }
+  if (params.update_ctrl_relay) {
+    packSignalIntel(data, 40, 1, 1);
+  }
+  if (params.update_rcs_threshold) {
+    packSignalIntel(data, 48, 1, 1);
+  }
+
+  if (params.update_max_distance) {
+    const uint32_t raw_distance =
+      std::min(1023u, static_cast<uint32_t>(params.max_distance_m / 2u));
+    packSignalIntel(data, 22, 10, raw_distance);
+  }
+  if (params.update_sensor_id) {
+    packSignalIntel(data, 32, 3, params.sensor_id & 0x07u);
+  }
+  if (params.update_output_type) {
+    packSignalIntel(data, 35, 2, static_cast<uint32_t>(params.output_type));
+  }
+  if (params.update_radar_power) {
+    packSignalIntel(data, 37, 3, static_cast<uint32_t>(params.radar_power));
+  }
+  if (params.update_ctrl_relay) {
+    packSignalIntel(data, 41, 1, params.ctrl_relay ? 1u : 0u);
+  }
+  if (params.update_send_quality) {
+    packSignalIntel(data, 42, 1, params.send_quality ? 1u : 0u);
+  }
+  if (params.update_send_ext_info) {
+    packSignalIntel(data, 43, 1, params.send_ext_info ? 1u : 0u);
+  }
+  if (params.update_sort_index) {
+    packSignalIntel(data, 44, 3, static_cast<uint32_t>(params.sort_index));
+  }
+  if (params.update_store_in_nvm) {
+    packSignalIntel(data, 47, 1, params.store_in_nvm ? 1u : 0u);
+  }
+  if (params.update_rcs_threshold) {
+    packSignalIntel(data, 49, 3, static_cast<uint32_t>(params.rcs_threshold));
+  }
+
   return data;
 }
 

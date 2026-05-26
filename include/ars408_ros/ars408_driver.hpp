@@ -15,6 +15,7 @@
 #ifndef ARS408_ROS__ARS408_DRIVER_HPP_
 #define ARS408_ROS__ARS408_DRIVER_HPP_
 
+#include "ars408_ros/ars408_can_parser.hpp"
 #include "ars408_ros/ars408_commands.hpp"
 #include "ars408_ros/ars408_constants.hpp"
 #include "ars408_ros/ars408_object.hpp"
@@ -35,8 +36,10 @@ private:
   uint8_t radar_id_{0};
 
   bool valid_radar_state_{false};
+  bool valid_version_id_{false};
   bool sequential_publish_{false};
   ars408::RadarState current_radar_state_{};
+  ars408::can_parser::VersionId current_version_id_{};
   ars408::Obj_0_Status current_objects_status_{};
   ars408::Obj_1_General objects_general_{};
   ars408::Obj_2_Quality objects_quality_{};
@@ -109,6 +112,8 @@ private:
    */
   ars408::Obj_3_Extended ParseObject3_Extended(const std::array<uint8_t, 8> & in_can_data);
 
+  void ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_data);
+
 public:
   /**
    * Sets the hardware Sensor ID (0–7) that this driver instance handles.
@@ -127,6 +132,8 @@ public:
    * Returns true if the RadarState has been received.
    */
   bool GetCurrentRadarState(ars408::RadarState & out_current_state);
+
+  bool GetVersionId(ars408::can_parser::VersionId & out_version_id);
 
   /**
    * Register the function to be called once all the Radar objects are ready.

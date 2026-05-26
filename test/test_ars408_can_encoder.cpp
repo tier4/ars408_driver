@@ -71,3 +71,58 @@ TEST(Ars408CanEncoder, EncodeYawRateInformation)
     static_cast<float>(unpackSignalIntel(left_turn, 8, 16)) * 0.01f - 327.68f;
   EXPECT_NEAR(decoded_turn, 10.0f, 0.05f);
 }
+
+TEST(Ars408CanEncoder, EncodeRadarCfgSensorIdOnly)
+{
+  ars408::can_encoder::RadarCfgParams params;
+  params.update_sensor_id = true;
+  params.sensor_id = 0;
+  const auto data = ars408::can_encoder::EncodeRadarCfg(params);
+
+  EXPECT_EQ(data[0], 0x02u);
+  EXPECT_EQ(data[4] & 0x07u, 0u);
+}
+
+TEST(Ars408CanEncoder, EncodeRadarCfgObjectOutputDefaults)
+{
+  ars408::can_encoder::RadarCfgParams params;
+  params.update_max_distance = true;
+  params.update_radar_power = true;
+  params.update_output_type = true;
+  params.update_send_quality = true;
+  params.update_send_ext_info = true;
+  params.update_sort_index = true;
+  params.update_store_in_nvm = true;
+  params.update_ctrl_relay = true;
+  params.update_rcs_threshold = true;
+  params.max_distance_m = 260;
+  params.output_type = ars408::can_encoder::OutputType::OBJECTS;
+  params.radar_power = ars408::can_encoder::ParseRadarPowerSetting("minus_3db");
+  params.send_quality = true;
+  params.send_ext_info = true;
+  params.sort_index = ars408::can_encoder::SortIndex::BY_RANGE;
+
+  const auto data = ars408::can_encoder::EncodeRadarCfg(params);
+
+  EXPECT_EQ(unpackSignalIntel(data, 35, 2), 1u);
+  EXPECT_EQ(unpackSignalIntel(data, 42, 1), 1u);
+  EXPECT_EQ(unpackSignalIntel(data, 43, 1), 1u);
+  EXPECT_EQ(unpackSignalIntel(data, 22, 10), 130u);
+  EXPECT_EQ(unpackSignalIntel(data, 37, 3), 1u);  // minus_3db
+}
+
+TEST(Ars408CanEncoder, ParseRadarPowerRejectsStandard)
+{
+  EXPECT_THROW(
+    ars408::can_encoder::ParseRadarPowerSetting("standard"), std::invalid_argument);
+}
+
+TEST(Ars408CanEncoder, ParseRadarPowerMinus6And9)
+{
+  EXPECT_EQ(
+    ars408::can_encoder::ParseRadarPowerSetting("minus_6db"),
+    ars408::can_encoder::RadarPower::MINUS_6DB);
+  EXPECT_EQ(
+    ars408::can_encoder::ParseRadarPowerSetting("minus_9db"),
+    ars408::can_encoder::RadarPower::MINUS_9DB);
+}
