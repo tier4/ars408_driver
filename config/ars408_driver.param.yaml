@@ -39,7 +39,7 @@
       startup_delay_sec: 0.5
       inter_send_delay_sec: 0.05
       retry_interval_sec: 2.0
-      criteria: {}
+      # Omit criteria when unused (do not use criteria: {} — breaks rclcpp param loading).
 
     # Example: deactivate distance filter on the radar
     # filter_cfg:
