@@ -1,11 +1,13 @@
 <launch>
-  <!-- interface -->
-  <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <!-- parameter -->
+  <arg name="input/frame" default="/sensing/radar/from_can_bus" />
+  <arg name="output/to_can_bus" default="/sensing/radar/to_can_bus" />
+  <arg name="input/odometry" default="/localization/kinematic_state" />
   <arg name="config_file" default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
 
   <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
-    <remap from="~/input/frame" to="$(var input/frame)" />
     <param from="$(var config_file)" allow_substs="true" />
+    <remap from="~/input/frame" to="$(var input/frame)" />
+    <remap from="~/output/to_can_bus" to="$(var output/to_can_bus)" />
+    <remap from="~/input/odometry" to="$(var input/odometry)" />
   </node>
 </launch>

@@ -11,3 +11,8 @@
     size_y: 1.8
     publish_objects_name: "~/output/objects"
     publish_scan_name: "~/output/scan"
+    publish_motion_input: true
+    output_can_frame_topic: "~/output/to_can_bus"
+    motion_publish_rate_hz: 50.0
+    speed_standstill_threshold_mps: 0.5
+    speed_moving_threshold_mps: 2.0

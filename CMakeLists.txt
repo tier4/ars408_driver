@@ -17,6 +17,7 @@ ament_auto_find_build_dependencies()
 # Driver Library
 ament_auto_add_library(pe_ars408_parser SHARED
   src/ars408_can_parser.cpp
+  src/ars408_can_encoder.cpp
   src/ars408_driver.cpp
 )
 
@@ -42,6 +43,11 @@ if(BUILD_TESTING)
   ament_add_gtest(test_ars408_can_parser test/test_ars408_can_parser.cpp)
   if(TARGET test_ars408_can_parser)
     target_link_libraries(test_ars408_can_parser pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_can_encoder test/test_ars408_can_encoder.cpp)
+  if(TARGET test_ars408_can_encoder)
+    target_link_libraries(test_ars408_can_encoder pe_ars408_parser)
   endif()
 endif()
 

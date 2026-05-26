@@ -41,20 +41,25 @@ cansend canX 2Y0#FA0000000E9C0000  # Set Sensor ID from Y to 6
 cansend canX 2Y0#FA0000000F9C0000  # Set Sensor ID from Y to 7
 ```
 
-5. Launch the driver
+5. Launch CAN bridge (outside this package, e.g. `ros2_socketcan`) and the driver
 
 ```sh
-ros2 launch pe_ars408_ros continental_ars408_socket_can.launch.xml receiver_interval_sec:=1.0
+# Example: start socket_can_bridge on your vehicle launch stack, then:
+ros2 launch pe_ars408_ros continental_ars408.launch.xml
 ```
 
 ## Design
 ### Input
 
-- `input/frame`
+- `~/input/frame` (remap to `from_can_bus` from `socket_can_bridge`)
   - `can_msgs` <https://github.com/ros-industrial/ros_canopen/tree/melodic-devel/can_msgs>
+- `~/input/odometry` (default remap: `/localization/kinematic_state`)
+  - `nav_msgs/Odometry` — used to publish motion CAN 0x300/0x301 when `publish_motion_input` is true
 
 ### Output
 
+- `~/output/to_can_bus` (remap to `to_can_bus` for `socket_can_bridge`)
+  - Motion CAN frames (0x300 Speed Information, 0x301 Yaw Rate Information)
 - `output/objects`
   - `RadarTrack`: <https://github.com/ros-perception/radar_msgs/blob/ros2/msg/RadarTrack.msg>
   - If you want to visualize, you should choose `RadarTrack` and visualize in rviz using [radar_tracks_msgs_converter](https://github.com/autowarefoundation/autoware.universe/tree/main/perception/radar_tracks_msgs_converter) with autoware.universe.
@@ -77,21 +82,14 @@ ros2 launch pe_ars408_ros continental_ars408_socket_can.launch.xml receiver_inte
   - The assumed x-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
 - `size_y`
   - The assumed y-axis size of output objects [m]. The default parameter is 1.8, which derive from distance resolution measuring of ARS408 for far range.
-- `connection_count`
-  - The parameter specifies the Radar (ARS408) connection count.
-  - The default value is 2, which derives from the number of connected ARS408 units.
 - `radar_id`
-  - The parameter specifies the Radar ID.
-  - The default parameter values are [0, 1].
-  - The number of settings derives from connection_count, and each can be configured with a unique value from 0 to 7.
-- `publish_radar_tracks_name`
-  - The string parameter specifies the topic name to publish radar tracks.
-  - The default parameter values are ["~/output/objects1", "~/output/objects2"].
-  - The number of settings derives from connection_count, and each can be configured with a unique topic name.
-- `publish_radar_scan_name`
-  - The string parameter specifies the topic name to publish scan radar.
-  - The default parameter values are ["~/output/scan1", "~/output/scan2"].
-  - The number of settings derives from connection_count, and each can be configured with a unique topic name.
+  - Sensor ID of this node instance (0–7). Launch one node per radar with a distinct `radar_id`.
+- `publish_objects_name` / `publish_scan_name`
+  - Topic names for radar tracks and scan output.
+- `publish_motion_input`
+  - When true, publish 0x300/0x301 on `~/output/to_can_bus` from odometry at `motion_publish_rate_hz`.
+- `motion_publish_rate_hz`, `speed_standstill_threshold_mps`, `speed_moving_threshold_mps`
+  - Motion CAN encoding options (see `ars408_driver.param.yaml`).
 - `can_receive_check_rate_hz`
   - The parameter specifies the check/poll rate of the CAN receive status [Hz].
 - `can_receive_check_timeout_sec`
@@ -99,12 +97,11 @@ ros2 launch pe_ars408_ros continental_ars408_socket_can.launch.xml receiver_inte
 
 ### launcher
 
-- continental_ars408.xml
-  - Base launcher
-- continental_ars408_socket_can.xml
-  - The launch file will initiate two nodes:
-    1. socketcan_bridge to read from `canN` and publish the CAN msg in `can_raw`
-    1. Continental ARS408 driver will read the `can_raw`, parse and publish `RadarTrack` or `RadarReturn`
+- `continental_ars408.launch.xml`
+  - Single `pe_ars408_node` (RX + TX + object publishing). Remaps:
+    - `input/frame` → CAN RX (`from_can_bus`)
+    - `output/to_can_bus` → CAN TX (`to_can_bus`)
+    - `input/odometry` → vehicle odometry
 
 ## Reference
 

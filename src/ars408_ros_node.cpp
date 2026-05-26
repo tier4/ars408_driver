@@ -14,12 +14,20 @@
 
 #include "ars408_ros/ars408_ros_node.hpp"
 
+#include "ars408_ros/ars408_can_encoder.hpp"
 #include "ars408_ros/ars408_can_parser.hpp"
+#include "ars408_ros/ars408_constants.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <cmath>
 #include <string>
 #include <unordered_map>
+
+namespace
+{
+constexpr double kRadToDeg = 180.0 / M_PI;
+}  // namespace
 
 PeContinentalArs408Node::PeContinentalArs408Node(const rclcpp::NodeOptions & node_options)
 : Node("ars408_node", node_options)
@@ -40,6 +48,71 @@ void PeContinentalArs408Node::CanFrameCallback(const can_msgs::msg::Frame::Share
   }
 
   ars408_driver_.Parse(can_msg->id, can_msg->data, can_msg->dlc, can_msg->header.stamp);
+}
+
+void PeContinentalArs408Node::OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
+{
+  const double linear_x = msg->twist.twist.linear.x;
+
+  if (standstill_ && std::abs(linear_x) > speed_moving_threshold_mps_) {
+    standstill_ = false;
+  } else if (!standstill_ && std::abs(linear_x) < speed_standstill_threshold_mps_) {
+    standstill_ = true;
+  }
+
+  std::lock_guard<std::mutex> lock(odometry_mutex_);
+  latest_odometry_ = *msg;
+}
+
+void PeContinentalArs408Node::PublishMotionCanFrames()
+{
+  std::optional<nav_msgs::msg::Odometry> odometry;
+  {
+    std::lock_guard<std::mutex> lock(odometry_mutex_);
+    odometry = latest_odometry_;
+  }
+
+  if (!odometry) {
+    return;
+  }
+
+  const double linear_x = odometry->twist.twist.linear.x;
+  const double yaw_rate_deg_s = odometry->twist.twist.angular.z * kRadToDeg;
+
+  ars408::can_encoder::SpeedDirection direction = ars408::can_encoder::SpeedDirection::STANDSTILL;
+  if (!standstill_) {
+    direction = linear_x >= 0.0 ?
+      ars408::can_encoder::SpeedDirection::FORWARD :
+      ars408::can_encoder::SpeedDirection::BACKWARD;
+  }
+
+  const float speed_mps = static_cast<float>(std::abs(linear_x));
+  const auto speed_payload = ars408::can_encoder::EncodeSpeedInformation(speed_mps, direction);
+  const auto yaw_payload = ars408::can_encoder::EncodeYawRateInformation(
+    static_cast<float>(yaw_rate_deg_s));
+
+  const rclcpp::Time stamp = odometry->header.stamp;
+
+  can_msgs::msg::Frame speed_frame;
+  speed_frame.header.stamp = stamp;
+  speed_frame.id = ars408::can_encoder::CanIdForSensor(ars408::SPEED_INFORMATION_00, radar_id_);
+  speed_frame.dlc = 8;
+  speed_frame.is_extended = false;
+  speed_frame.is_rtr = false;
+  speed_frame.is_error = false;
+  speed_frame.data = speed_payload;
+
+  can_msgs::msg::Frame yaw_frame;
+  yaw_frame.header.stamp = stamp;
+  yaw_frame.id = ars408::can_encoder::CanIdForSensor(ars408::YAW_RATE_INFORMATION_00, radar_id_);
+  yaw_frame.dlc = 8;
+  yaw_frame.is_extended = false;
+  yaw_frame.is_rtr = false;
+  yaw_frame.is_error = false;
+  yaw_frame.data = yaw_payload;
+
+  can_tx_publisher_->publish(speed_frame);
+  can_tx_publisher_->publish(yaw_frame);
 }
 
 void PeContinentalArs408Node::OnCanReceiveCheck()
@@ -200,6 +273,18 @@ void PeContinentalArs408Node::SetParameter()
   publish_scan_name_ = this->declare_parameter<std::string>("publish_scan_name");
   can_receive_check_rate_hz_ = this->declare_parameter<double>("can_receive_check_rate_hz");
   can_receive_check_timeout_sec_ = this->declare_parameter<double>("can_receive_check_timeout_sec");
+
+  publish_motion_input_ = this->declare_parameter<bool>("publish_motion_input", true);
+  output_can_frame_topic_ = this->declare_parameter<std::string>(
+    "output_can_frame_topic", "~/output/to_can_bus");
+  motion_publish_rate_hz_ = this->declare_parameter<double>("motion_publish_rate_hz", 50.0);
+  speed_standstill_threshold_mps_ =
+    declare_parameter<double>("speed_standstill_threshold_mps", 0.5);
+  speed_moving_threshold_mps_ = declare_parameter<double>("speed_moving_threshold_mps", 2.0);
+
+  if (motion_publish_rate_hz_ <= 0.0) {
+    throw std::invalid_argument("motion_publish_rate_hz must be positive");
+  }
 }
 
 void PeContinentalArs408Node::Run()
@@ -214,7 +299,7 @@ void PeContinentalArs408Node::Run()
       this, std::placeholders::_1, std::placeholders::_2),
     sequential_publish_);
 
-  subscription_ = this->create_subscription<can_msgs::msg::Frame>(
+  can_subscription_ = this->create_subscription<can_msgs::msg::Frame>(
     "~/input/frame", 10,
     std::bind(&PeContinentalArs408Node::CanFrameCallback, this, std::placeholders::_1));
 
@@ -228,6 +313,20 @@ void PeContinentalArs408Node::Run()
   can_receive_check_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(static_cast<int64_t>(1000.0 / can_receive_check_rate_hz_)),
     std::bind(&PeContinentalArs408Node::OnCanReceiveCheck, this));
+
+  if (publish_motion_input_) {
+    can_tx_publisher_ =
+      this->create_publisher<can_msgs::msg::Frame>(output_can_frame_topic_, rclcpp::QoS(10));
+
+    odometry_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+      "~/input/odometry", rclcpp::QoS(10),
+      std::bind(&PeContinentalArs408Node::OdometryCallback, this, std::placeholders::_1));
+
+    const auto period = std::chrono::duration<double>(1.0 / motion_publish_rate_hz_);
+    motion_publish_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(period),
+      std::bind(&PeContinentalArs408Node::PublishMotionCanFrames, this));
+  }
 }
 
 #include "rclcpp_components/register_node_macro.hpp"

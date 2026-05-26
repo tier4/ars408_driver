@@ -17,6 +17,7 @@
 
 #include "ars408_ros/ars408_driver.hpp"
 #include "can_msgs/msg/frame.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "radar_msgs/msg/radar_scan.hpp"
 #include "radar_msgs/msg/radar_tracks.hpp"
 #include "unique_identifier_msgs/msg/uuid.hpp"
@@ -24,6 +25,8 @@
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
+#include <mutex>
+#include <optional>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -35,7 +38,9 @@ using DiagnosticArrayPublisher = rclcpp::Publisher<DiagnosticArray>;
 
 class PeContinentalArs408Node : public rclcpp::Node
 {
-  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr subscription_;
+  rclcpp::Subscription<can_msgs::msg::Frame>::SharedPtr can_subscription_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_subscription_;
+  rclcpp::Publisher<can_msgs::msg::Frame>::SharedPtr can_tx_publisher_;
   rclcpp::Publisher<radar_msgs::msg::RadarTracks>::SharedPtr publisher_radar_tracks_;
   rclcpp::Publisher<radar_msgs::msg::RadarScan>::SharedPtr publisher_radar_scan_;
   DiagnosticArrayPublisher::SharedPtr diagnostics_pub_;
@@ -52,15 +57,27 @@ class PeContinentalArs408Node : public rclcpp::Node
   double can_receive_check_rate_hz_;
   double can_receive_check_timeout_sec_;
 
+  bool publish_motion_input_;
+  std::string output_can_frame_topic_;
+  double motion_publish_rate_hz_;
+  double speed_standstill_threshold_mps_;
+  double speed_moving_threshold_mps_;
+  bool standstill_{true};
+  std::optional<nav_msgs::msg::Odometry> latest_odometry_;
+  std::mutex odometry_mutex_;
+
   const uint8_t max_radar_id = 255;
   std::vector<unique_identifier_msgs::msg::UUID> UUID_table_;
   rclcpp::TimerBase::SharedPtr can_receive_check_timer_;
+  rclcpp::TimerBase::SharedPtr motion_publish_timer_;
   std::optional<rclcpp::Time> can_receive_last_time_;
   rclcpp::Time last_warn_time_;
 
   ars408::Ars408Driver ars408_driver_{};
 
   void CanFrameCallback(const can_msgs::msg::Frame::SharedPtr can_msg);
+  void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void PublishMotionCanFrames();
   void OnCanReceiveCheck();
   void GenerateUUIDTable();
   void SetParameter();
