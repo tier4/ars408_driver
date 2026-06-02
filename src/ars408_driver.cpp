@@ -1,4 +1,4 @@
-// Copyright 2021 Perception Engine, Inc. All rights reserved.
+// Copyright 2026 TIER IV, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
 
 #include "ars408_ros/ars408_driver.hpp"
 
+#include "ars408_ros/ars408_can_parser.hpp"
+#include "ars408_ros/ars408_constants.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <string>
@@ -25,12 +28,12 @@ namespace ars408
 
 void Ars408Driver::AddDetectedObject(ars408::RadarObject in_object)
 {
-  // check if this object belongs to the current registered sequence before registering it.
   if (in_object.sequence_id == current_objects_status_.MeasurementCounter) {
     radar_objects_.insert(std::pair<uint8_t, ars408::RadarObject>(in_object.id, in_object));
     updated_objects_general_++;
   }
 }
+
 void Ars408Driver::ClearRadarObjects()
 {
   radar_objects_.clear();
@@ -40,23 +43,30 @@ void Ars408Driver::ClearRadarObjects()
 }
 
 void Ars408Driver::CallDetectedObjectsCallback(
-  std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects)
+  std::unordered_map<uint8_t, ars408::RadarObject> & in_detected_objects,
+  const rclcpp::Time & stamp)
 {
-  if (detected_objects_callback_) {  // check if callback was registered
-    detected_objects_callback_(in_detected_objects);
+  if (detected_objects_callback_) {
+    detected_objects_callback_(in_detected_objects, stamp);
   }
 }
 
 void Ars408Driver::UpdateObjectQuality(
   uint8_t in_object_id, const ars408::Obj_2_Quality & in_object_quality)
 {
-  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
-  object_iterator = radar_objects_.find(in_object_id);
-
+  auto object_iterator = radar_objects_.find(in_object_id);
   if (object_iterator != radar_objects_.end()) {
     ars408::RadarObject object_found = object_iterator->second;
+    object_found.has_quality = true;
     object_found.probability_existence = in_object_quality.ExistenceProbability;
-
+    object_found.dist_long_rms_m = in_object_quality.LongitudinalDistanceXRms;
+    object_found.dist_lat_rms_m = in_object_quality.LateralDistanceYRms;
+    object_found.vrel_long_rms_mps = in_object_quality.RelativeLongitudinalVelocityXRms;
+    object_found.vrel_lat_rms_mps = in_object_quality.RelativeLateralVelocityYRms;
+    object_found.arel_long_rms_mps2 = in_object_quality.RelativeLongitudinalAccelerationXRms;
+    object_found.arel_lat_rms_mps2 = in_object_quality.RelativeLateralAccelerationYRms;
+    object_found.orientation_rms_deg = in_object_quality.OrientationAngleRms;
+    object_found.meas_state = in_object_quality.MeasState;
     radar_objects_.at(object_iterator->first) = object_found;
     updated_objects_quality_++;
   }
@@ -65,9 +75,7 @@ void Ars408Driver::UpdateObjectQuality(
 void Ars408Driver::UpdateObjectExtInfo(
   uint8_t in_object_id, const ars408::Obj_3_Extended & in_object_ext_info)
 {
-  std::unordered_map<uint8_t, ars408::RadarObject>::const_iterator object_iterator;
-  object_iterator = radar_objects_.find(in_object_id);
-
+  auto object_iterator = radar_objects_.find(in_object_id);
   if (object_iterator != radar_objects_.end()) {
     ars408::RadarObject object_found = object_iterator->second;
     object_found.object_class = in_object_ext_info.ObjectClass;
@@ -76,7 +84,6 @@ void Ars408Driver::UpdateObjectExtInfo(
     object_found.orientation_angle = in_object_ext_info.OrientationAngle;
     object_found.rel_acceleration_long_x = in_object_ext_info.RelativeLongitudinalAccelerationX;
     object_found.rel_acceleration_lat_y = in_object_ext_info.RelativeLateralAccelerationY;
-
     radar_objects_.at(object_iterator->first) = object_found;
     updated_objects_ext_++;
   }
@@ -84,24 +91,25 @@ void Ars408Driver::UpdateObjectExtInfo(
 
 bool Ars408Driver::DetectedObjectsReady()
 {
-  bool ready = true;
-  if (valid_radar_state_) {
-    if (updated_objects_general_ == current_objects_status_.NumberOfObjects) {
-      if (
-        current_radar_state_.SendQuality &&
-        (updated_objects_quality_ != current_objects_status_.NumberOfObjects)) {
-        ready = false;
-      }
-      if (
-        current_radar_state_.SendExtInfo &&
-        (updated_objects_ext_ != current_objects_status_.NumberOfObjects)) {
-        ready = false;
-      }
-    }
-  } else {
-    ready = false;
+  if (!valid_radar_state_) {
+    return false;
   }
-  return ready;
+  if (updated_objects_general_ != current_objects_status_.NumberOfObjects) {
+    return false;
+  }
+  if (
+    current_radar_state_.SendQuality &&
+    updated_objects_quality_ != current_objects_status_.NumberOfObjects)
+  {
+    return false;
+  }
+  if (
+    current_radar_state_.SendExtInfo &&
+    updated_objects_ext_ != current_objects_status_.NumberOfObjects)
+  {
+    return false;
+  }
+  return true;
 }
 
 bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state)
@@ -113,292 +121,325 @@ bool Ars408Driver::GetCurrentRadarState(ars408::RadarState & out_current_state)
   return false;
 }
 
+bool Ars408Driver::GetVersionId(ars408::can_parser::VersionId & out_version_id)
+{
+  if (valid_version_id_) {
+    out_version_id = current_version_id_;
+    return true;
+  }
+  return false;
+}
+
+void Ars408Driver::ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  current_version_id_ = can_parser::ParseVersionId(in_can_data);
+  valid_version_id_ = true;
+}
+
+void Ars408Driver::ParseFilterStateHeaderFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  filter_state_header_ = can_parser::ParseFilterStateHeader(in_can_data);
+  valid_filter_state_header_ = true;
+}
+
+void Ars408Driver::ParseFilterStateCfgFrame(const std::array<uint8_t, 8> & in_can_data)
+{
+  const auto state = can_parser::ParseFilterStateCfg(in_can_data);
+  for (auto & existing : filter_state_cfgs_) {
+    if (existing.index == state.index && existing.for_objects == state.for_objects) {
+      existing = state;
+      return;
+    }
+  }
+  filter_state_cfgs_.push_back(state);
+}
+
+bool Ars408Driver::GetFilterStateHeader(filter_signals::FilterStateHeader & out_header)
+{
+  if (!valid_filter_state_header_) {
+    return false;
+  }
+  out_header = filter_state_header_;
+  return true;
+}
+
+bool Ars408Driver::GetFilterStateCfgs(std::vector<filter_signals::FilterStateCfg> & out_states)
+{
+  if (filter_state_cfgs_.empty()) {
+    return false;
+  }
+  out_states = filter_state_cfgs_;
+  return true;
+}
+
 void Ars408Driver::RegisterDetectedObjectsCallback(
-  std::function<void(const std::unordered_map<uint8_t, ars408::RadarObject> &)> objects_callback,
+  std::function<void(
+    const std::unordered_map<uint8_t, ars408::RadarObject> &,
+    const rclcpp::Time &
+  )> objects_callback,
   bool sequential_publish)
 {
   detected_objects_callback_ = objects_callback;
   sequential_publish_ = sequential_publish;
 }
 
+void Ars408Driver::RegisterDetectedClustersCallback(
+  std::function<void(
+    const std::unordered_map<uint8_t, ars408::RadarCluster> &,
+    const rclcpp::Time &
+  )> clusters_callback)
+{
+  detected_clusters_callback_ = clusters_callback;
+}
+
+void Ars408Driver::AddDetectedCluster(ars408::RadarCluster cluster)
+{
+  if (cluster.sequence_id == current_cluster_status_.meas_counter) {
+    radar_clusters_.insert_or_assign(cluster.id, cluster);
+    ++updated_clusters_general_;
+  }
+}
+
+void Ars408Driver::ClearRadarClusters()
+{
+  radar_clusters_.clear();
+  updated_clusters_general_ = 0u;
+  updated_clusters_quality_ = 0u;
+}
+
+void Ars408Driver::CallDetectedClustersCallback(
+  std::unordered_map<uint8_t, ars408::RadarCluster> & clusters, const rclcpp::Time & stamp)
+{
+  if (detected_clusters_callback_) {
+    detected_clusters_callback_(clusters, stamp);
+  }
+}
+
+bool Ars408Driver::DetectedClustersReady()
+{
+  if (!valid_radar_state_) {
+    return false;
+  }
+  const uint16_t total_clusters = static_cast<uint16_t>(current_cluster_status_.nof_clusters_near) +
+    static_cast<uint16_t>(current_cluster_status_.nof_clusters_far);
+  if (updated_clusters_general_ != total_clusters) {
+    return false;
+  }
+  if (current_radar_state_.SendQuality && updated_clusters_quality_ != total_clusters) {
+    return false;
+  }
+  return true;
+}
+
+void Ars408Driver::UpdateClusterQuality(
+  const uint8_t cluster_id, const std::array<uint8_t, 8> & in_can_data)
+{
+  auto it = radar_clusters_.find(cluster_id);
+  if (it != radar_clusters_.end()) {
+    can_parser::ParseClusterQuality(in_can_data, it->second);
+    ++updated_clusters_quality_;
+  }
+}
+
+void Ars408Driver::ParseCluster0_Status(const std::array<uint8_t, 8> & in_can_data)
+{
+  can_parser::ParseClusterStatus(in_can_data, current_cluster_status_);
+}
+
+ars408::RadarCluster Ars408Driver::ParseCluster1_General(const std::array<uint8_t, 8> & in_can_data)
+{
+  return can_parser::ParseClusterGeneral(in_can_data, current_cluster_status_.meas_counter);
+}
+
 void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8> & in_can_data)
 {
-  current_radar_state_.NvmWriteStatus = ((in_can_data[0] & 0x80u) >> 7u);
-  current_radar_state_.NvmReadStatus = ((in_can_data[0] & 0x40u) >> 6u);
-
-  uint16_t distance =
-    ((((in_can_data[1] & 0xFFu) << 2u) & 0xFFFFu) + ((in_can_data[2] & 0xC0u) >> 6u)) << 1u;
-  current_radar_state_.MaxDistance = distance;
-  current_radar_state_.PersistentError = (in_can_data[2] & 0x20u) >> 5u;
-  current_radar_state_.Interference = (in_can_data[2] & 0x10u) >> 4u;
-  current_radar_state_.TemperatureError = (in_can_data[2] & 0x08u) >> 3u;
-  current_radar_state_.TemporaryError = (in_can_data[2] & 0x04u) >> 2u;
-  current_radar_state_.VoltageError = (in_can_data[2] & 0x02u) >> 1u;
-  current_radar_state_.SensorID = (in_can_data[4] & 0x07u);
-  current_radar_state_.SortingMode =
-    ars408::RadarState::SortingConfig((in_can_data[4] & 0x70u) >> 4u);
-  current_radar_state_.PowerMode =
-    ars408::RadarState::PowerConfig((in_can_data[3] << 1u) + ((in_can_data[4] & 0x80u) >> 7u));
-  current_radar_state_.EgoMotionRxStatus =
-    ars408::RadarState::MotionRx((in_can_data[5] & 0xC0u) >> 6u);
-  current_radar_state_.SendExtInfo = ars408::RadarState::Config((in_can_data[5] & 0x20u) >> 5u);
-  current_radar_state_.SendQuality = ars408::RadarState::Config((in_can_data[5] & 0x10u) >> 4u);
-  current_radar_state_.OutputType =
-    ars408::RadarState::OutputTypeConfig((in_can_data[5] & 0x0Cu) >> 2u);
-  current_radar_state_.CtrlRelay = ars408::RadarState::Config((in_can_data[5] & 0x02u) >> 1u);
-  current_radar_state_.Rcs_Threshold =
-    ars408::RadarState::Rcs_ThresholdConfig((in_can_data[7] & 0x1Cu) >> 2u);
+  can_parser::ParseRadarState(in_can_data, current_radar_state_);
   valid_radar_state_ = true;
 }
 
-std::array<uint8_t, 8> Ars408Driver::GenerateRadarConfiguration(
-  const ars408::RadarCfg & in_new_status)
+void Ars408Driver::ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data)
 {
-  std::array<uint8_t, 8> can_data = {0, 0, 0, 0, 0, 0, 0, 0};
-
-  if (in_new_status.UpdateStoreInNVM) {
-    can_data[0] = 0x80; /* X000 0000 */
-    if (in_new_status.StoreInNVM) {
-      can_data[5] |= 0x80u; /* 1000 0000 */
-    } else {
-      can_data[5] |= 0x00u; /* 0000 0000 */
-    }
-  }
-  if (in_new_status.UpdateSortIndex) {
-    can_data[0] |= 0x40u; /* 0XXX 0000 */
-    switch (in_new_status.SortIndex) {
-      case ars408::RadarCfg::Sorting::NO_SORT:
-        can_data[5] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::Sorting::BY_RANGE:
-        can_data[5] |= 0x10u; /* 0001 0000 */
-        break;
-      case ars408::RadarCfg::Sorting::BY_RCS:
-        can_data[5] |= 0x20u; /* 0010 0000 */
-        break;
-      default:
-        can_data[5] |= 0x00u;
-    }
-  }
-  if (in_new_status.UpdateSendExtInfo) {
-    can_data[0] |= 0x20u; /* 0000 X000 */
-    if (in_new_status.SendExtInfo) {
-      can_data[5] |= 0x08u; /* 0000 1000 */
-    } else {
-      can_data[5] |= 0x00u; /* 0000 0000 */
-    }
-  }
-  if (in_new_status.UpdateSendQuality) {
-    can_data[0] |= 0x10u; /* 0000 0X00 */
-    if (in_new_status.SendQuality) {
-      can_data[5] |= 0x04u; /* 0000 0100 */
-    } else {
-      can_data[5] |= 0x00u; /* 0010 0000 */
-    }
-  }
-  if (in_new_status.UpdateOutputType) {
-    can_data[0] |= 0x08u;
-    switch (in_new_status.OutputType) { /* 000X X000 */
-      case ars408::RadarCfg::OutputTypeConfig::NONE:
-        can_data[4] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::OutputTypeConfig::OBJECTS:
-        can_data[4] |= 0x08u; /* 0000 1000 */
-        break;
-      case ars408::RadarCfg::OutputTypeConfig::CLUSTERS:
-        can_data[4] |= 0x10u; /* 0001 0000 */
-        break;
-    }
-  }
-  if (in_new_status.UpdateRadarPower) {
-    can_data[0] |= 0x04u;
-    switch (in_new_status.RadarPower) { /* XXX0 0000 */
-      case ars408::RadarCfg::RadarPowerConfig::STANDARD:
-        can_data[4] |= 0x00u; /* 0000 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_3dB_GAIN:
-        can_data[4] |= 0x20u; /* 0010 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_6dB_GAIN:
-        can_data[4] |= 0x40u; /* 0100 0000 */
-        break;
-      case ars408::RadarCfg::RadarPowerConfig::MINUS_9dB_GAIN:
-        can_data[4] |= 0x60u; /* 0110 0000 */
-        break;
-    }
-  }
-  if (in_new_status.UpdateSensorID && in_new_status.SensorID <= 7) {
-    can_data[0] |= 0x02u;
-    can_data[4] |= in_new_status.SensorID; /* 0000 0XXX */
-  }
-  if (in_new_status.UpdateMaxDistance) {
-    can_data[0] |= 0x01u; /* XXXX XXXX */
-                          /* XX00 0000 */
-    // ARS408:
-    // Standard Range Version: 196 – 260 m
-    // Extended Range Version: 196 – 1200 m
-    // uint16_t TempDistance = in_new_status.MaxDistance * 2;
-    // uint8_t low_byte = (TempDistance & 0x0002u) << 6u;
-    // uint8_t high_byte = (TempDistance & 0x0FFFu) >> 2u;
-    can_data[1] = 0x00; /* XXXX XXXX */
-    can_data[2] = 0x00; /* XX00 0000 */
-  }
-
-  return can_data;
-}
-
-ars408::Obj_0_Status Ars408Driver::ParseObject0_Status(const std::array<uint8_t, 8> & in_can_data)
-{
-  current_objects_status_.NumberOfObjects = in_can_data[0] & 0xFFu;
-  current_objects_status_.MeasurementCounter = (in_can_data[1] << 8u) + (in_can_data[0]);
-  current_objects_status_.InterfaceVersion = (in_can_data[3] & 0xF0u) >> 4u;
-  return current_objects_status_;
+  can_parser::ParseObjectListStatus(in_can_data, current_objects_status_);
 }
 
 ars408::RadarObject Ars408Driver::ParseObject1_General(const std::array<uint8_t, 8> & in_can_data)
 {
-  ars408::RadarObject current_object;
-  current_object.sequence_id = current_objects_status_.MeasurementCounter;
-  current_object.id = in_can_data[0];
-  current_object.dynamic_property = ars408::Obj_1_General::DynamicProperty(in_can_data[6] & 0x07u);
-  current_object.rcs = (in_can_data[7] * 0.5) - 64.0;
-
-  uint16_t dist_x_tmp = (in_can_data[1] << 5u) + ((in_can_data[2] & 0xF8u) >> 3u);
-  current_object.distance_long_x = dist_x_tmp * 0.2f - 500.0f;
-
-  uint16_t dist_y_tmp = ((in_can_data[2] & 0x07u) << 8u) + (in_can_data[3]);
-  current_object.distance_lat_y = dist_y_tmp * 0.2f - 204.6f;
-
-  uint16_t speed_x_tmp = (in_can_data[4] << 2u) + ((in_can_data[5] & 0xC0u) >> 6u);
-  current_object.speed_long_x = (speed_x_tmp * 0.25f) - 128.0f;
-
-  uint16_t speed_y_ymp = ((in_can_data[5] & 0x3Fu) << 3u) + ((in_can_data[6] & 0xE0u) >> 5u);
-  current_object.speed_lat_y = (speed_y_ymp * 0.25f - 64.0f);
-  return current_object;
+  return can_parser::ParseObjectGeneral(in_can_data, current_objects_status_.MeasurementCounter);
 }
 
 ars408::Obj_2_Quality Ars408Driver::ParseObject2_Quality(const std::array<uint8_t, 8> & in_can_data)
 {
-  ars408::Obj_2_Quality obj_quality;
-  obj_quality.Id = in_can_data[0];
-  uint8_t prob_tmp = (in_can_data[6] & 0x1Cu) >> 2u;
-  switch (prob_tmp) {
-    case 0x00u:
-      obj_quality.ExistenceProbability = 0;
-      break;
-    case 0x01u:
-      obj_quality.ExistenceProbability = 0.25;
-      break;
-    case 0x02u:
-      obj_quality.ExistenceProbability = 0.5;
-      break;
-    case 0x03u:
-      obj_quality.ExistenceProbability = 0.75;
-      break;
-    case 0x04u:
-      obj_quality.ExistenceProbability = 0.9;
-      break;
-    case 0x05u:
-      obj_quality.ExistenceProbability = 0.99;
-      break;
-    case 0x06u:
-      obj_quality.ExistenceProbability = 0.999;
-      break;
-    case 0x07u:
-      obj_quality.ExistenceProbability = 1;
-      break;
-  }
-  return obj_quality;
+  return can_parser::ParseObjectQuality(in_can_data);
 }
 
 ars408::Obj_3_Extended Ars408Driver::ParseObject3_Extended(
   const std::array<uint8_t, 8> & in_can_data)
 {
-  ars408::Obj_3_Extended obj_extended;
-  obj_extended.Id = in_can_data[0];
-  uint16_t tmp_rel_acc_x = (in_can_data[1] << 3u) + ((in_can_data[2] & 0xE0u) >> 5u);
-  obj_extended.RelativeLongitudinalAccelerationX = tmp_rel_acc_x * 0.01 - 10.f;
-
-  uint16_t tmp_rel_acc_y = ((in_can_data[2] & 0x1Fu) << 4u) + ((in_can_data[3] & 0xF0u) >> 4u);
-  obj_extended.RelativeLateralAccelerationY = tmp_rel_acc_y * 0.01 - 2.5f;
-
-  uint8_t tmp_class = in_can_data[3] & 0x07u;
-  switch (tmp_class) {
-    case 0x00u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::POINT;
-      break;
-    case 0x01u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::CAR;
-      break;
-    case 0x02u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::TRUCK;
-      break;
-    case 0x04u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::MOTORCYCLE;
-      break;
-    case 0x05u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::BICYCLE;
-      break;
-    case 0x06u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::WIDE;
-      break;
-    default:
-    case 0x07u:
-    case 0x03u:
-      obj_extended.ObjectClass = ars408::Obj_3_Extended::ObjectClassProperty::RESERVED_01;
-      break;
-  }
-
-  uint16_t tmp_angle = (in_can_data[4] << 2u) + ((in_can_data[5] & 0xC0u) >> 6u);
-  obj_extended.OrientationAngle = tmp_angle * 0.4f - 180.f;
-
-  obj_extended.Length = in_can_data[6] * 0.2f;
-  obj_extended.Width = in_can_data[7] * 0.2f;
-  return obj_extended;
+  return can_parser::ParseObjectExtended(in_can_data);
 }
 
 std::string Ars408Driver::Parse(
   const uint32_t & can_id, const std::array<uint8_t, 8> & in_can_data,
-  const uint8_t & in_data_length)
+  const uint8_t & in_data_length, const rclcpp::Time & stamp)
 {
+  if (can_parser::SensorIdFromCanId(can_id) != radar_id_) {
+    return "";
+  }
+
   switch (can_id) {
-    case ars408::RADAR_STATE:  /// 0x201 the current configuration and sensor state in message
-      if (ars408::RADAR_STATE_BYTES == in_data_length) {
+    case ars408::RADAR_STATE_00:
+    case ars408::RADAR_STATE_01:
+    case ars408::RADAR_STATE_02:
+    case ars408::RADAR_STATE_03:
+    case ars408::RADAR_STATE_04:
+    case ars408::RADAR_STATE_05:
+    case ars408::RADAR_STATE_06:
+    case ars408::RADAR_STATE_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::RADAR_STATE_BYTES)) {
         ParseRadarState(in_can_data);
       }
       break;
-    case ars408::OBJ_STATUS:  /// 0x60A contains list header information,
-                              /// i.e. the number of objects that are sent afterwards
-      if (ars408::OBJ_STATUS_BYTES == in_data_length) {
-        // ars408::Obj_0_Status object_status = ParseObject0_Status(in_can_data);
+    case ars408::OBJ_STATUS_00:
+    case ars408::OBJ_STATUS_01:
+    case ars408::OBJ_STATUS_02:
+    case ars408::OBJ_STATUS_03:
+    case ars408::OBJ_STATUS_04:
+    case ars408::OBJ_STATUS_05:
+    case ars408::OBJ_STATUS_06:
+    case ars408::OBJ_STATUS_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::OBJ_STATUS_BYTES)) {
         if (!sequential_publish_ && DetectedObjectsReady()) {
-          CallDetectedObjectsCallback(radar_objects_);
+          CallDetectedObjectsCallback(radar_objects_, stamp);
         }
+        ParseObject0_Status(in_can_data);
         ClearRadarObjects();
       }
       break;
-    case ars408::OBJ_GENERAL:  /// 0x60B contains the position and velocity of the objects
-      if (ars408::OBJ_GENERAL_BYTES == in_data_length) {
-        ars408::RadarObject object = ParseObject1_General(in_can_data);
-        AddDetectedObject(object);
+    case ars408::OBJ_GENERAL_00:
+    case ars408::OBJ_GENERAL_01:
+    case ars408::OBJ_GENERAL_02:
+    case ars408::OBJ_GENERAL_03:
+    case ars408::OBJ_GENERAL_04:
+    case ars408::OBJ_GENERAL_05:
+    case ars408::OBJ_GENERAL_06:
+    case ars408::OBJ_GENERAL_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::OBJ_GENERAL_BYTES)) {
+        AddDetectedObject(ParseObject1_General(in_can_data));
       }
       break;
-    case ars408::OBJ_QUALITY:  /// 0x60C contains the quality information of the objects
-      if (ars408::OBJ_QUALITY_BYTES == in_data_length) {
-        ars408::Obj_2_Quality object_quality = ParseObject2_Quality(in_can_data);
+    case ars408::OBJ_QUALITY_00:
+    case ars408::OBJ_QUALITY_01:
+    case ars408::OBJ_QUALITY_02:
+    case ars408::OBJ_QUALITY_03:
+    case ars408::OBJ_QUALITY_04:
+    case ars408::OBJ_QUALITY_05:
+    case ars408::OBJ_QUALITY_06:
+    case ars408::OBJ_QUALITY_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::OBJ_QUALITY_BYTES)) {
+        const ars408::Obj_2_Quality object_quality = ParseObject2_Quality(in_can_data);
         UpdateObjectQuality(object_quality.Id, object_quality);
       }
       break;
-    case ars408::OBJ_EXTENDED:  /// 0x60D contains the quality information of the objects
-      if (ars408::OBJ_EXTENDED_BYTES == in_data_length) {
-        ars408::Obj_3_Extended object_ext_info = ParseObject3_Extended(in_can_data);
+    case ars408::OBJ_EXTENDED_00:
+    case ars408::OBJ_EXTENDED_01:
+    case ars408::OBJ_EXTENDED_02:
+    case ars408::OBJ_EXTENDED_03:
+    case ars408::OBJ_EXTENDED_04:
+    case ars408::OBJ_EXTENDED_05:
+    case ars408::OBJ_EXTENDED_06:
+    case ars408::OBJ_EXTENDED_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::OBJ_EXTENDED_BYTES)) {
+        const ars408::Obj_3_Extended object_ext_info = ParseObject3_Extended(in_can_data);
         UpdateObjectExtInfo(object_ext_info.Id, object_ext_info);
       }
+      break;
+    case ars408::VERSION_ID_00:
+    case ars408::VERSION_ID_01:
+    case ars408::VERSION_ID_02:
+    case ars408::VERSION_ID_03:
+    case ars408::VERSION_ID_04:
+    case ars408::VERSION_ID_05:
+    case ars408::VERSION_ID_06:
+    case ars408::VERSION_ID_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::VERSION_ID_BYTES)) {
+        ParseVersionIdFrame(in_can_data);
+      }
+      break;
+    case ars408::FILTER_STATE_HEADER_00:
+    case ars408::FILTER_STATE_HEADER_01:
+    case ars408::FILTER_STATE_HEADER_02:
+    case ars408::FILTER_STATE_HEADER_03:
+    case ars408::FILTER_STATE_HEADER_04:
+    case ars408::FILTER_STATE_HEADER_05:
+    case ars408::FILTER_STATE_HEADER_06:
+    case ars408::FILTER_STATE_HEADER_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::FILTER_STATE_HEADER_BYTES)) {
+        ParseFilterStateHeaderFrame(in_can_data);
+      }
+      break;
+    case ars408::FILTER_STATE_CFG_00:
+    case ars408::FILTER_STATE_CFG_01:
+    case ars408::FILTER_STATE_CFG_02:
+    case ars408::FILTER_STATE_CFG_03:
+    case ars408::FILTER_STATE_CFG_04:
+    case ars408::FILTER_STATE_CFG_05:
+    case ars408::FILTER_STATE_CFG_06:
+    case ars408::FILTER_STATE_CFG_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::FILTER_STATE_CFG_BYTES)) {
+        ParseFilterStateCfgFrame(in_can_data);
+      }
+      break;
+    case ars408::CLUSTER_STATUS_00:
+    case ars408::CLUSTER_STATUS_01:
+    case ars408::CLUSTER_STATUS_02:
+    case ars408::CLUSTER_STATUS_03:
+    case ars408::CLUSTER_STATUS_04:
+    case ars408::CLUSTER_STATUS_05:
+    case ars408::CLUSTER_STATUS_06:
+    case ars408::CLUSTER_STATUS_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_STATUS_BYTES)) {
+        if (!sequential_publish_ && DetectedClustersReady()) {
+          CallDetectedClustersCallback(radar_clusters_, stamp);
+        }
+        ParseCluster0_Status(in_can_data);
+        ClearRadarClusters();
+      }
+      break;
+    case ars408::CLUSTER_GENERAL_00:
+    case ars408::CLUSTER_GENERAL_01:
+    case ars408::CLUSTER_GENERAL_02:
+    case ars408::CLUSTER_GENERAL_03:
+    case ars408::CLUSTER_GENERAL_04:
+    case ars408::CLUSTER_GENERAL_05:
+    case ars408::CLUSTER_GENERAL_06:
+    case ars408::CLUSTER_GENERAL_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_GENERAL_BYTES)) {
+        AddDetectedCluster(ParseCluster1_General(in_can_data));
+      }
+      break;
+    case ars408::CLUSTER_QUALITY_00:
+    case ars408::CLUSTER_QUALITY_01:
+    case ars408::CLUSTER_QUALITY_02:
+    case ars408::CLUSTER_QUALITY_03:
+    case ars408::CLUSTER_QUALITY_04:
+    case ars408::CLUSTER_QUALITY_05:
+    case ars408::CLUSTER_QUALITY_06:
+    case ars408::CLUSTER_QUALITY_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_QUALITY_BYTES)) {
+        const uint8_t cluster_id = in_can_data[0];
+        UpdateClusterQuality(cluster_id, in_can_data);
+      }
+      break;
+    default:
       break;
   }
 
   if (sequential_publish_ && DetectedObjectsReady()) {
-    CallDetectedObjectsCallback(radar_objects_);
+    CallDetectedObjectsCallback(radar_objects_, stamp);
+  }
+
+  if (sequential_publish_ && DetectedClustersReady()) {
+    CallDetectedClustersCallback(radar_clusters_, stamp);
   }
 
   return "";

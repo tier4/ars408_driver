@@ -1,4 +1,4 @@
-// Copyright 2021 Perception Engine, Inc. All rights reserved.
+// Copyright 2026 TIER IV, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,6 +109,35 @@ public:
   float length;  /*Length of the tracked object*/
   float width;  /*Width of the tracked object*/
   float probability_existence;
+  bool has_quality{false};
+  float dist_long_rms_m{0.f};
+  float dist_lat_rms_m{0.f};
+  float vrel_long_rms_mps{0.f};
+  float vrel_lat_rms_mps{0.f};
+  float arel_long_rms_mps2{0.f};
+  float arel_lat_rms_mps2{0.f};
+  float orientation_rms_deg{0.f};
+  uint8_t meas_state{0};
+};
+
+struct RadarCluster
+{
+  uint16_t sequence_id{0};
+  uint8_t id{0};
+  float distance_long_x{0.f};
+  float distance_lat_y{0.f};
+  float speed_long_x{0.f};
+  float speed_lat_y{0.f};
+  float rcs{0.f};
+  uint8_t dyn_prop{0};
+  bool has_quality{false};
+  float dist_long_rms_m{0.f};
+  float dist_lat_rms_m{0.f};
+  float vrel_long_rms_mps{0.f};
+  float vrel_lat_rms_mps{0.f};
+  float pdh0{0.f};
+  uint8_t ambig_state{0};
+  uint8_t invalid_state{0};
 };
 }  // namespace ars408
 

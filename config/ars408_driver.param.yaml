@@ -1,0 +1,75 @@
+/**:
+  ros__parameters:
+    radar_id: 0
+    can_receive_check_rate_hz: 100.0
+    can_receive_check_timeout_sec: 2.0
+    output_frame: "ars408"
+    publish_radar_track: true
+    publish_radar_scan: false
+    sequential_publish: false
+    size_x: 1.8
+    size_y: 1.8
+    use_radar_reported_dimensions: true
+    inflate_covariance_by_existence_probability: true
+    publish_objects_name: "~/output/objects"
+    publish_scan_name: "~/output/scan"
+    publish_motion_input: true
+    motion_publish_rate_hz: 50.0
+    speed_standstill_threshold_mps: 0.5
+    speed_moving_threshold_mps: 2.0
+    publish_radar_cfg_on_startup: true
+    radar_cfg_startup_delay_sec: 1.0
+    radar_cfg_retry_interval_sec: 1.0
+    publish_radar_state_diagnostics: true
+    radar_cfg:
+      max_distance_m: 260
+      output_type: "objects"       # none | objects | clusters
+      send_quality: true
+      send_ext_info: true
+      sort_index: "by_range"       # no_sort | by_range | by_rcs
+      radar_power: "minus_3db"     # minus_3db | minus_6db | minus_9db only (standard not allowed: Japan radio regulations)
+      store_in_nvm: false
+      rcs_threshold: "normal"      # normal | high_sensitivity
+      ctrl_relay: false
+
+    # FilterCfg (0x202) — nested under filter_cfg (see README)
+    filter_cfg:
+      send_on_startup: false
+      startup_delay_sec: 0.5
+      inter_send_delay_sec: 0.05
+      retry_interval_sec: 2.0
+      # Omit the criteria block entirely when send_on_startup is false.
+
+    # Example: deactivate distance filter on the radar (active: false sends the OFF command)
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: false
+    #       target: objects
+
+    # Example: enable pass-through filters (add keys under criteria; no separate index list)
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: true
+    #       target: objects
+    #       min: 0.0
+    #       max: 260.0
+    #     nof_obj:
+    #       active: true
+    #       target: objects
+    #       max: 64.0
+
+    # Example: mixed — one criterion off, one on with range
+    # filter_cfg:
+    #   send_on_startup: true
+    #   criteria:
+    #     distance:
+    #       active: false
+    #       target: objects
+    #     nof_obj:
+    #       active: true
+    #       target: objects
+    #       max: 64.0

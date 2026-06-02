@@ -16,6 +16,12 @@ ament_auto_find_build_dependencies()
 
 # Driver Library
 ament_auto_add_library(pe_ars408_parser SHARED
+  src/ars408_can_parser.cpp
+  src/ars408_can_encoder.cpp
+  src/ars408_filter_signals.cpp
+  src/ars408_filter_cfg_verify.cpp
+  src/ars408_radar_cfg_verify.cpp
+  src/ars408_radar_msgs_conversion.cpp
   src/ars408_driver.cpp
 )
 
@@ -34,11 +40,43 @@ rclcpp_components_register_node(pe_ars408_node_component
 )
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_ars408_can_parser test/test_ars408_can_parser.cpp)
+  if(TARGET test_ars408_can_parser)
+    target_link_libraries(test_ars408_can_parser pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_can_encoder test/test_ars408_can_encoder.cpp)
+  if(TARGET test_ars408_can_encoder)
+    target_link_libraries(test_ars408_can_encoder pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_version_id_parser test/test_ars408_version_id_parser.cpp)
+  if(TARGET test_ars408_version_id_parser)
+    target_link_libraries(test_ars408_version_id_parser pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_radar_cfg_verify test/test_ars408_radar_cfg_verify.cpp)
+  if(TARGET test_ars408_radar_cfg_verify)
+    target_link_libraries(test_ars408_radar_cfg_verify pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_radar_msgs_conversion test/test_ars408_radar_msgs_conversion.cpp)
+  if(TARGET test_ars408_radar_msgs_conversion)
+    target_link_libraries(test_ars408_radar_msgs_conversion pe_ars408_parser)
+  endif()
+
+  ament_add_gtest(test_ars408_filter_cfg test/test_ars408_filter_cfg.cpp)
+  if(TARGET test_ars408_filter_cfg)
+    target_link_libraries(test_ars408_filter_cfg pe_ars408_parser)
+  endif()
 endif()
 
 ament_auto_package(
   INSTALL_TO_SHARE
+    config
     launch
 )

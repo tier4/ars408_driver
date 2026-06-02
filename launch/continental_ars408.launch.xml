@@ -1,25 +1,14 @@
 <launch>
-  <!-- interface -->
-  <arg name="input/frame" default="/sensing/radar/can_tx" />
-  <arg name="output/objects" default="objects_raw" />
-  <arg name="output/scan" default="scan" />
-  <!-- parameter -->
-  <arg name="output_frame" default="ars408" />
-  <arg name="publish_radar_track" default="true" />
-  <arg name="publish_radar_scan" default="false" />
-  <arg name="sequential_publish" default="false" />
-  <arg name="size_x" default="1.8" />
-  <arg name="size_y" default="1.8" />
+  <arg name="from_can_bus" default="from_can_bus" description="CAN frames from socket_can_bridge (RX)"/>
+  <arg name="to_can_bus" default="to_can_bus" description="CAN frames to socket_can_bridge (TX)"/>
+  <arg name="odometry" default="/localization/kinematic_state" description="Vehicle odometry for 0x300/0x301"/>
+  <arg name="config_file" default="$(find-pkg-share pe_ars408_ros)/config/ars408_driver.param.yaml" />
+  <arg name="node_name" default="pe_ars408_node" description="Unique node name (required when multiple radars share one CAN bus)" />
 
-  <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="pe_ars408_node" output="screen">
-    <remap from="~/input/frame" to="$(var input/frame)" />
-    <remap from="~/output/objects" to="$(var output/objects)" />
-    <remap from="~/output/scan" to="$(var output/scan)" />
-    <param name="publish_radar_track" value="$(var publish_radar_track)" />
-    <param name="publish_radar_scan" value="$(var publish_radar_scan)" />
-    <param name="output_frame" value="$(var output_frame)" />
-    <param name="sequential_publish" value="$(var sequential_publish)" />
-    <param name="size_x" value="$(var size_x)" />
-    <param name="size_y" value="$(var size_y)" />
+  <node pkg="pe_ars408_ros" exec="pe_ars408_node" name="$(var node_name)" output="screen">
+    <param from="$(var config_file)" allow_substs="true" />
+    <remap from="~/from_can_bus" to="$(var from_can_bus)" />
+    <remap from="~/to_can_bus" to="$(var to_can_bus)" />
+    <remap from="~/odometry" to="$(var odometry)" />
   </node>
 </launch>
