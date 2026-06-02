@@ -23,9 +23,16 @@ namespace ars408
 namespace can_signal
 {
 
-/// Maps a signal bit offset to a CAN payload byte/bit (Standard Radar Interface Intel layout).
-/// When the start bit is byte-aligned, overflow continues in the next higher byte; otherwise it
-/// continues at bit 0 of the previous byte (e.g. RadarCfg_MaxDistance LSB@22, MSB@15).
+/// Maps a signal bit offset to a CAN payload byte/bit (ARS408 Standard Radar Interface layout).
+///
+/// ARS408 encoding rule:
+///   - Within a byte : bit positions go small → large (LSB first, standard).
+///   - Across bytes  : overflow always continues at bit 0 of the PREVIOUS (lower-index) byte.
+///                     i.e. bytes go large-index → small-index (high CAN address → low CAN address).
+///
+/// This applies uniformly whether the start bit is byte-aligned or not.
+/// Example: RadarDevice_Speed LSB@8, MSB@4 → bit sequence 8,9,…,15,0,1,2,3,4
+///          RadarCfg_MaxDistance   LSB@22,MSB@15 → bit sequence 22,23,8,9,…,15
 inline void SignalBitPosition(
   const uint16_t start_bit, const uint8_t offset, uint8_t & out_byte_index, uint8_t & out_bit_index)
 {
@@ -38,14 +45,10 @@ inline void SignalBitPosition(
     return;
   }
 
+  // Overflow: always move to the previous (lower-index) byte.
   const uint8_t remaining = static_cast<uint8_t>(offset - bits_until_byte_end);
-  if (start_bit_in_byte == 0u) {
-    out_byte_index = static_cast<uint8_t>(start_byte + 1u + remaining / 8u);
-    out_bit_index = static_cast<uint8_t>(remaining % 8u);
-  } else {
-    out_byte_index = static_cast<uint8_t>(start_byte - 1u - remaining / 8u);
-    out_bit_index = static_cast<uint8_t>(remaining % 8u);
-  }
+  out_byte_index = static_cast<uint8_t>(start_byte - 1u - remaining / 8u);
+  out_bit_index = static_cast<uint8_t>(remaining % 8u);
 }
 
 inline uint32_t UnpackSignalIntel(

@@ -67,7 +67,9 @@ std::array<uint8_t, 8> EncodeSpeedInformation(
   const uint32_t raw_speed = static_cast<uint32_t>(std::lround(clamped_speed / 0.02f)) & 0x1FFFu;
   const uint32_t raw_direction = static_cast<uint32_t>(direction) & 0x03u;
 
+  // SpeedDirection: LSB=6, MSB=7 (byte 0 bits 6-7)
   PackSignalIntel(data, 6, 2, raw_direction);
+  // Speed: LSB=8, MSB=4 — bit sequence 8,9,…,15,0,1,2,3,4
   PackSignalIntel(data, 8, 13, raw_speed);
   return data;
 }

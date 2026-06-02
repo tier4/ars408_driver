@@ -60,10 +60,14 @@ TEST(Ars408CanParser, ParseRadarStateMaxDistance)
 
 TEST(Ars408CanParser, ParseObjectListStatus)
 {
+  // MeasurementCounter: LSB=16 (byte 2), MSB=15 (byte 1) — bytes go large→small.
+  // byte 1 = upper byte, byte 2 = lower byte.
+  // InterfaceVersion: bits 28-31 (byte 3 high nibble).
   std::array<uint8_t, 8> data{};
   data[0] = 5;
-  data[2] = 0x34;
-  data[3] = 0x12;
+  data[1] = 0x12;  // MeasurementCounter upper byte
+  data[2] = 0x34;  // MeasurementCounter lower byte
+  data[3] = 0x10;  // InterfaceVersion = 1 (bits 28-31)
 
   ars408::Obj_0_Status status;
   ParseObjectListStatus(data, status);
