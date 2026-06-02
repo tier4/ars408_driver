@@ -118,7 +118,7 @@ class PeContinentalArs408Node : public rclcpp::Node
   void SetParameter();
   ars408::can_encoder::RadarCfgParams LoadRadarCfgParams();
   std::vector<ars408::filter_signals::FilterCfgEntry> LoadFilterCfgEntries();
-  std::vector<std::string> ListFilterCriteriaNames() const;
+  std::vector<std::string> ListFilterCriteriaNames();
 
   radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
   radar_msgs::msg::RadarReturn ConvertRadarObjectToRadarReturn(

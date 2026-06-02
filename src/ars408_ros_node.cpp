@@ -149,15 +149,14 @@ void PeContinentalArs408Node::PublishMotionCanFrames()
 
   ars408::can_encoder::SpeedDirection direction = ars408::can_encoder::SpeedDirection::STANDSTILL;
   if (!standstill_) {
-    direction = linear_x >= 0.0 ?
-      ars408::can_encoder::SpeedDirection::FORWARD :
-      ars408::can_encoder::SpeedDirection::BACKWARD;
+    direction = linear_x >= 0.0 ? ars408::can_encoder::SpeedDirection::FORWARD
+                                : ars408::can_encoder::SpeedDirection::BACKWARD;
   }
 
   const float speed_mps = static_cast<float>(std::abs(linear_x));
   const auto speed_payload = ars408::can_encoder::EncodeSpeedInformation(speed_mps, direction);
-  const auto yaw_payload = ars408::can_encoder::EncodeYawRateInformation(
-    static_cast<float>(yaw_rate_deg_s));
+  const auto yaw_payload =
+    ars408::can_encoder::EncodeYawRateInformation(static_cast<float>(yaw_rate_deg_s));
 
   const rclcpp::Time stamp = odometry->header.stamp;
 
@@ -204,9 +203,8 @@ void PeContinentalArs408Node::PublishRadarCfg()
   last_radar_cfg_send_time_ = this->now();
 
   RCLCPP_INFO(
-    get_logger(),
-    "Published RadarCfg (0x200) for sensor ID %d (max_distance=%u m)",
-    radar_id_, radar_cfg_params_.max_distance_m);
+    get_logger(), "Published RadarCfg (0x200) for sensor ID %d (max_distance=%u m)", radar_id_,
+    radar_cfg_params_.max_distance_m);
 }
 
 void PeContinentalArs408Node::UpdateRadarCfgSync()
@@ -219,17 +217,15 @@ void PeContinentalArs408Node::UpdateRadarCfgSync()
   if (ars408_driver_.GetCurrentRadarState(state)) {
     std::string detail;
     if (ars408::radar_cfg_verify::RadarStateMatchesConfig(
-        state, radar_cfg_params_, radar_id_, &detail))
-    {
+          state, radar_cfg_params_, radar_id_, &detail)) {
       if (!radar_cfg_applied_) {
-        RCLCPP_INFO(
-          get_logger(), "RadarCfg verified on sensor ID %d (matches YAML)", radar_id_);
+        RCLCPP_INFO(get_logger(), "RadarCfg verified on sensor ID %d (matches YAML)", radar_id_);
       }
       radar_cfg_applied_ = true;
       radar_cfg_mismatch_detail_.clear();
-      if (send_filter_cfg_on_startup_ && !filter_cfg_applied_ &&
-        !filter_cfg_sequence_start_time_.has_value())
-      {
+      if (
+        send_filter_cfg_on_startup_ && !filter_cfg_applied_ &&
+        !filter_cfg_sequence_start_time_.has_value()) {
         filter_cfg_sequence_start_time_ = this->now();
         filter_cfg_send_index_ = 0;
         last_filter_cfg_send_time_ = std::nullopt;
@@ -242,7 +238,8 @@ void PeContinentalArs408Node::UpdateRadarCfgSync()
   }
 
   const rclcpp::Time now = this->now();
-  const bool should_send = !last_radar_cfg_send_time_.has_value() ||
+  const bool should_send =
+    !last_radar_cfg_send_time_.has_value() ||
     (now - last_radar_cfg_send_time_.value()).seconds() >= radar_cfg_retry_interval_sec_;
   if (should_send) {
     RCLCPP_WARN(
@@ -274,11 +271,9 @@ void PeContinentalArs408Node::PublishFilterCfgEntry(
   last_filter_cfg_send_time_ = this->now();
 
   RCLCPP_INFO(
-    get_logger(),
-    "%s FilterCfg (0x202) index=%s active=%s target=%s",
+    get_logger(), "%s FilterCfg (0x202) index=%s active=%s target=%s",
     entry.active ? "Published" : "Deactivated",
-    ars408::filter_signals::FilterIndexToString(entry.index),
-    entry.active ? "true" : "false",
+    ars408::filter_signals::FilterIndexToString(entry.index), entry.active ? "true" : "false",
     entry.for_objects ? "objects" : "clusters");
 }
 
@@ -294,8 +289,7 @@ void PeContinentalArs408Node::PublishFilterCfgSequenceStep()
   }
 
   if (filter_cfg_sequence_start_time_.has_value()) {
-    const double since_start =
-      (this->now() - filter_cfg_sequence_start_time_.value()).seconds();
+    const double since_start = (this->now() - filter_cfg_sequence_start_time_.value()).seconds();
     if (since_start < filter_cfg_startup_delay_sec_) {
       return;
     }
@@ -311,8 +305,7 @@ void PeContinentalArs408Node::PublishFilterCfgSequenceStep()
   const rclcpp::Time now = this->now();
   if (
     last_filter_cfg_send_time_.has_value() &&
-    (now - last_filter_cfg_send_time_.value()).seconds() < filter_cfg_inter_send_delay_sec_)
-  {
+    (now - last_filter_cfg_send_time_.value()).seconds() < filter_cfg_inter_send_delay_sec_) {
     return;
   }
 
@@ -341,9 +334,7 @@ void PeContinentalArs408Node::UpdateFilterCfgSync()
     filter_cfg_mismatch_detail_ = "FilterState_Cfg (0x204) not received yet";
   } else {
     std::string detail;
-    if (ars408::filter_cfg_verify::AllFilterEntriesMatch(
-        filter_cfg_entries_, reported, &detail))
-    {
+    if (ars408::filter_cfg_verify::AllFilterEntriesMatch(filter_cfg_entries_, reported, &detail)) {
       filter_cfg_applied_ = true;
       filter_cfg_mismatch_detail_.clear();
       RCLCPP_INFO(get_logger(), "FilterCfg verified on sensor ID %d (matches YAML)", radar_id_);
@@ -353,7 +344,8 @@ void PeContinentalArs408Node::UpdateFilterCfgSync()
   }
 
   const rclcpp::Time now = this->now();
-  const bool should_retry = !last_filter_cfg_send_time_.has_value() ||
+  const bool should_retry =
+    !last_filter_cfg_send_time_.has_value() ||
     (now - last_filter_cfg_send_time_.value()).seconds() >= filter_cfg_retry_interval_sec_;
   if (should_retry && filter_cfg_send_index_ >= filter_cfg_entries_.size()) {
     RCLCPP_WARN(
@@ -494,9 +486,8 @@ void PeContinentalArs408Node::PublishRadarStateDiagnostics()
   diag.message = "RadarState OK";
 
   if (
-    state.PersistentError || state.Interference || state.TemperatureError ||
-    state.TemporaryError || state.VoltageError)
-  {
+    state.PersistentError || state.Interference || state.TemperatureError || state.TemporaryError ||
+    state.VoltageError) {
     diag.level = DiagnosticStatus::ERROR;
     diag.message = "Radar reported hardware or environment error";
   } else if (state.EgoMotionRxStatus != ars408::RadarState::INPUT_OK) {
@@ -516,8 +507,7 @@ void PeContinentalArs408Node::PublishRadarStateDiagnostics()
   add_kv("output_type", std::to_string(static_cast<int>(state.OutputType)));
   add_kv("send_quality", state.SendQuality == ars408::RadarState::ACTIVE ? "true" : "false");
   add_kv("send_ext_info", state.SendExtInfo == ars408::RadarState::ACTIVE ? "true" : "false");
-  add_kv(
-    "ego_motion_rx_status", std::to_string(static_cast<int>(state.EgoMotionRxStatus)));
+  add_kv("ego_motion_rx_status", std::to_string(static_cast<int>(state.EgoMotionRxStatus)));
   add_kv("persistent_error", state.PersistentError ? "true" : "false");
   add_kv("interference", state.Interference ? "true" : "false");
   add_kv("voltage_error", state.VoltageError ? "true" : "false");
@@ -527,9 +517,8 @@ void PeContinentalArs408Node::PublishRadarStateDiagnostics()
   ars408::can_parser::VersionId version;
   if (ars408_driver_.GetVersionId(version)) {
     add_kv(
-      "firmware_version",
-      std::to_string(version.major) + "." + std::to_string(version.minor) + "." +
-      std::to_string(version.patch));
+      "firmware_version", std::to_string(version.major) + "." + std::to_string(version.minor) +
+                            "." + std::to_string(version.patch));
     add_kv("extended_range", version.extended_range ? "true" : "false");
   }
 
@@ -560,8 +549,7 @@ void PeContinentalArs408Node::OnCanReceiveCheck()
 
   if ((current_time - last_warn_time_).seconds() > can_receive_check_timeout_sec_) {
     RCLCPP_ERROR(
-      get_logger(), "CAN topic received timeout (%.3f sec). Radar ID=%d",
-      elapsed_sec, radar_id_);
+      get_logger(), "CAN topic received timeout (%.3f sec). Radar ID=%d", elapsed_sec, radar_id_);
     last_warn_time_ = current_time;
   }
 
@@ -598,21 +586,21 @@ ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams(
   params.update_ctrl_relay = true;
   params.update_rcs_threshold = true;
 
-  params.max_distance_m = static_cast<uint16_t>(
-    declare_parameter<int>("radar_cfg.max_distance_m", 260));
+  params.max_distance_m =
+    static_cast<uint16_t>(declare_parameter<int>("radar_cfg.max_distance_m", 260));
   params.sensor_id = radar_id_;
-  params.output_type = ParseOutputType(
-    declare_parameter<std::string>("radar_cfg.output_type", "objects"));
+  params.output_type =
+    ParseOutputType(declare_parameter<std::string>("radar_cfg.output_type", "objects"));
   // Standard (0 dB) is not selectable (Japan radio regulations); attenuated levels only.
   params.radar_power = ars408::can_encoder::ParseRadarPowerSetting(
     declare_parameter<std::string>("radar_cfg.radar_power", "minus_3db"));
   params.send_quality = declare_parameter<bool>("radar_cfg.send_quality", true);
   params.send_ext_info = declare_parameter<bool>("radar_cfg.send_ext_info", true);
-  params.sort_index = ParseSortIndex(
-    declare_parameter<std::string>("radar_cfg.sort_index", "by_range"));
+  params.sort_index =
+    ParseSortIndex(declare_parameter<std::string>("radar_cfg.sort_index", "by_range"));
   params.store_in_nvm = declare_parameter<bool>("radar_cfg.store_in_nvm", false);
-  params.rcs_threshold = ParseRcsThreshold(
-    declare_parameter<std::string>("radar_cfg.rcs_threshold", "normal"));
+  params.rcs_threshold =
+    ParseRcsThreshold(declare_parameter<std::string>("radar_cfg.rcs_threshold", "normal"));
   params.ctrl_relay = declare_parameter<bool>("radar_cfg.ctrl_relay", false);
 
   if (params.max_distance_m < 2 || params.max_distance_m > 2046) {
@@ -622,32 +610,20 @@ ars408::can_encoder::RadarCfgParams PeContinentalArs408Node::LoadRadarCfgParams(
   return params;
 }
 
-std::vector<std::string> PeContinentalArs408Node::ListFilterCriteriaNames() const
+std::vector<std::string> PeContinentalArs408Node::ListFilterCriteriaNames()
 {
   constexpr const char * kCriteriaPrefix = "filter_cfg.criteria.";
   std::set<std::string> names;
 
-  const rcl_interfaces::msg::ListParametersResult listed =
-    list_parameters(std::vector<std::string>{"filter_cfg.criteria"}, 10u);
-
-  for (const std::string & prefix : listed.prefixes) {
-    if (prefix.rfind(kCriteriaPrefix, 0) != 0) {
+  // list_parameters() only returns already-declared parameters, so undeclared YAML entries
+  // are invisible at startup. Use get_parameter_overrides() instead, which includes all
+  // parameters provided via YAML/command-line before declaration.
+  const auto & overrides = get_node_parameters_interface()->get_parameter_overrides();
+  for (const auto & [param_name, param_value] : overrides) {
+    if (param_name.rfind(kCriteriaPrefix, 0) != 0) {
       continue;
     }
-    const std::string remainder = prefix.substr(std::strlen(kCriteriaPrefix));
-    const auto dot = remainder.find('.');
-    const std::string criterion_name =
-      (dot == std::string::npos) ? remainder : remainder.substr(0, dot);
-    if (!criterion_name.empty()) {
-      names.insert(criterion_name);
-    }
-  }
-
-  for (const std::string & full_name : listed.names) {
-    if (full_name.rfind(kCriteriaPrefix, 0) != 0) {
-      continue;
-    }
-    const std::string remainder = full_name.substr(std::strlen(kCriteriaPrefix));
+    const std::string remainder = param_name.substr(std::strlen(kCriteriaPrefix));
     const auto dot = remainder.find('.');
     const std::string criterion_name =
       (dot == std::string::npos) ? remainder : remainder.substr(0, dot);
@@ -671,7 +647,8 @@ std::vector<ars408::filter_signals::FilterCfgEntry> PeContinentalArs408Node::Loa
 
     const std::string index_name = declare_parameter<std::string>(prefix + "index", name);
     entry.index = ars408::filter_signals::ParseFilterIndexSetting(index_name);
-    entry.for_objects = ParseFilterTarget(declare_parameter<std::string>(prefix + "target", "objects"));
+    entry.for_objects =
+      ParseFilterTarget(declare_parameter<std::string>(prefix + "target", "objects"));
     entry.active = declare_parameter<bool>(prefix + "active", true);
     entry.min_value = declare_parameter<double>(prefix + "min", 0.0);
     entry.max_value = declare_parameter<double>(prefix + "max", 0.0);
@@ -679,8 +656,7 @@ std::vector<ars408::filter_signals::FilterCfgEntry> PeContinentalArs408Node::Loa
     if (entry.active) {
       if (
         !ars408::filter_signals::FilterIndexIgnoresMin(entry.index) &&
-        entry.max_value <= entry.min_value)
-      {
+        entry.max_value <= entry.min_value) {
         throw std::invalid_argument(prefix + "max must be greater than min for " + name);
       }
       if (entry.max_value <= 0.0) {
@@ -698,15 +674,20 @@ uint32_t PeContinentalArs408Node::ConvertRadarClassToAwSemanticClass(
   const ars408::Obj_3_Extended::ObjectClassProperty & in_radar_class)
 {
   switch (in_radar_class) {
-    case ars408::Obj_3_Extended::BICYCLE:    return 32006;
-    case ars408::Obj_3_Extended::CAR:        return 32001;
-    case ars408::Obj_3_Extended::TRUCK:      return 32002;
-    case ars408::Obj_3_Extended::MOTORCYCLE: return 32005;
+    case ars408::Obj_3_Extended::BICYCLE:
+      return 32006;
+    case ars408::Obj_3_Extended::CAR:
+      return 32001;
+    case ars408::Obj_3_Extended::TRUCK:
+      return 32002;
+    case ars408::Obj_3_Extended::MOTORCYCLE:
+      return 32005;
     case ars408::Obj_3_Extended::POINT:
     case ars408::Obj_3_Extended::RESERVED_01:
     case ars408::Obj_3_Extended::WIDE:
     case ars408::Obj_3_Extended::RESERVED_02:
-    default:                                 return 32000;
+    default:
+      return 32000;
   }
 }
 
@@ -814,10 +795,8 @@ void PeContinentalArs408Node::SetParameter()
   }
 
   require_radar_cfg_sync_ = declare_parameter<bool>("publish_radar_cfg_on_startup", true);
-  radar_cfg_startup_delay_sec_ =
-    declare_parameter<double>("radar_cfg_startup_delay_sec", 1.0);
-  radar_cfg_retry_interval_sec_ =
-    declare_parameter<double>("radar_cfg_retry_interval_sec", 1.0);
+  radar_cfg_startup_delay_sec_ = declare_parameter<double>("radar_cfg_startup_delay_sec", 1.0);
+  radar_cfg_retry_interval_sec_ = declare_parameter<double>("radar_cfg_retry_interval_sec", 1.0);
   publish_radar_state_diagnostics_ =
     declare_parameter<bool>("publish_radar_state_diagnostics", true);
 
@@ -832,14 +811,11 @@ void PeContinentalArs408Node::SetParameter()
     radar_cfg_applied_ = true;
   }
 
-  send_filter_cfg_on_startup_ =
-    declare_parameter<bool>("filter_cfg.send_on_startup", false);
-  filter_cfg_startup_delay_sec_ =
-    declare_parameter<double>("filter_cfg.startup_delay_sec", 0.5);
+  send_filter_cfg_on_startup_ = declare_parameter<bool>("filter_cfg.send_on_startup", false);
+  filter_cfg_startup_delay_sec_ = declare_parameter<double>("filter_cfg.startup_delay_sec", 0.5);
   filter_cfg_inter_send_delay_sec_ =
     declare_parameter<double>("filter_cfg.inter_send_delay_sec", 0.05);
-  filter_cfg_retry_interval_sec_ =
-    declare_parameter<double>("filter_cfg.retry_interval_sec", 2.0);
+  filter_cfg_retry_interval_sec_ = declare_parameter<double>("filter_cfg.retry_interval_sec", 2.0);
 
   if (filter_cfg_inter_send_delay_sec_ <= 0.0) {
     throw std::invalid_argument("filter_cfg.inter_send_delay_sec must be positive");
@@ -865,8 +841,8 @@ void PeContinentalArs408Node::Run()
   ars408_driver_.SetRadarId(radar_id_);
   ars408_driver_.RegisterDetectedObjectsCallback(
     std::bind(
-      &PeContinentalArs408Node::RadarDetectedObjectsCallback,
-      this, std::placeholders::_1, std::placeholders::_2),
+      &PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1,
+      std::placeholders::_2),
     sequential_publish_);
 
   can_subscription_ = this->create_subscription<can_msgs::msg::Frame>(
@@ -877,8 +853,7 @@ void PeContinentalArs408Node::Run()
     this->create_publisher<radar_msgs::msg::RadarTracks>(publish_objects_name_, 10);
   publisher_radar_scan_ =
     this->create_publisher<radar_msgs::msg::RadarScan>(publish_scan_name_, 10);
-  diagnostics_pub_ =
-    this->create_publisher<DiagnosticArray>("/diagnostics", rclcpp::QoS{1});
+  diagnostics_pub_ = this->create_publisher<DiagnosticArray>("/diagnostics", rclcpp::QoS{1});
 
   can_receive_check_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(static_cast<int64_t>(1000.0 / can_receive_check_rate_hz_)),
@@ -915,19 +890,17 @@ void PeContinentalArs408Node::Run()
   }
 
   if (send_filter_cfg_on_startup_ && !filter_cfg_entries_.empty()) {
-    filter_cfg_startup_timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(50),
-      [this]() {
-        if (filter_cfg_applied_) {
-          filter_cfg_startup_timer_->cancel();
-          return;
-        }
-        if (!radar_cfg_applied_) {
-          return;
-        }
-        PublishFilterCfgSequenceStep();
-        UpdateFilterCfgSync();
-      });
+    filter_cfg_startup_timer_ = this->create_wall_timer(std::chrono::milliseconds(50), [this]() {
+      if (filter_cfg_applied_) {
+        filter_cfg_startup_timer_->cancel();
+        return;
+      }
+      if (!radar_cfg_applied_) {
+        return;
+      }
+      PublishFilterCfgSequenceStep();
+      UpdateFilterCfgSync();
+    });
   }
 }
 

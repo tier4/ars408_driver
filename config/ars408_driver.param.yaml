@@ -38,9 +38,9 @@
       startup_delay_sec: 0.5
       inter_send_delay_sec: 0.05
       retry_interval_sec: 2.0
-      # Omit criteria when unused (do not use criteria: {} — breaks rclcpp param loading).
+      # Omit the criteria block entirely when send_on_startup is false.
 
-    # Example: deactivate distance filter on the radar
+    # Example: deactivate distance filter on the radar (active: false sends the OFF command)
     # filter_cfg:
     #   send_on_startup: true
     #   criteria:
