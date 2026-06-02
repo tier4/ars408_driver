@@ -58,6 +58,15 @@ private:
     const rclcpp::Time &)>
     detected_objects_callback_;
 
+  ars408::can_parser::Cluster0Status current_cluster_status_{};
+  std::unordered_map<uint8_t, ars408::RadarCluster> radar_clusters_{};
+  uint16_t updated_clusters_general_{0xFFFFu};
+  uint16_t updated_clusters_quality_{0xFFFFu};
+
+  std::function<void(const std::unordered_map<uint8_t, ars408::RadarCluster> &,
+    const rclcpp::Time &)>
+    detected_clusters_callback_;
+
   /**
    * Adds a RadarObject to the pool of objects
    */
@@ -116,6 +125,15 @@ private:
    */
   ars408::Obj_3_Extended ParseObject3_Extended(const std::array<uint8_t, 8> & in_can_data);
 
+  void AddDetectedCluster(ars408::RadarCluster cluster);
+  void ClearRadarClusters();
+  bool DetectedClustersReady();
+  void CallDetectedClustersCallback(
+    std::unordered_map<uint8_t, ars408::RadarCluster> & clusters, const rclcpp::Time & stamp);
+  void UpdateClusterQuality(uint8_t cluster_id, const std::array<uint8_t, 8> & in_can_data);
+  void ParseCluster0_Status(const std::array<uint8_t, 8> & in_can_data);
+  ars408::RadarCluster ParseCluster1_General(const std::array<uint8_t, 8> & in_can_data);
+
   void ParseVersionIdFrame(const std::array<uint8_t, 8> & in_can_data);
 
   void ParseFilterStateHeaderFrame(const std::array<uint8_t, 8> & in_can_data);
@@ -156,6 +174,12 @@ public:
       const rclcpp::Time &
     )> objects_callback,
     bool sequential_publish);
+
+  void RegisterDetectedClustersCallback(
+    std::function<void(
+      const std::unordered_map<uint8_t, ars408::RadarCluster> &,
+      const rclcpp::Time &
+    )> clusters_callback);
 };
 }  // namespace ars408
 

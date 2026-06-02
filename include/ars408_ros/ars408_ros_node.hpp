@@ -123,6 +123,8 @@ class PeContinentalArs408Node : public rclcpp::Node
   radar_msgs::msg::RadarTrack ConvertRadarObjectToRadarTrack(const ars408::RadarObject & in_object);
   radar_msgs::msg::RadarReturn ConvertRadarObjectToRadarReturn(
     const ars408::RadarObject & in_object);
+  radar_msgs::msg::RadarReturn ConvertRadarClusterToRadarReturn(
+    const ars408::RadarCluster & cluster);
 
   unique_identifier_msgs::msg::UUID GenerateRandomUUID();
   uint32_t ConvertRadarClassToAwSemanticClass(
@@ -132,6 +134,9 @@ public:
   explicit PeContinentalArs408Node(const rclcpp::NodeOptions & node_options);
   void RadarDetectedObjectsCallback(
     const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects,
+    const rclcpp::Time & stamp);
+  void ClusterListCallback(
+    const std::unordered_map<uint8_t, ars408::RadarCluster> & detected_clusters,
     const rclcpp::Time & stamp);
   void Run();
 };

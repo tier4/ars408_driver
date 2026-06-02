@@ -139,5 +139,26 @@ radar_msgs::msg::RadarReturn ToRadarReturn(const RadarObject & object)
   return radar_return;
 }
 
+radar_msgs::msg::RadarReturn ToRadarReturn(const RadarCluster & cluster)
+{
+  radar_msgs::msg::RadarReturn radar_return;
+  const float range_sq = cluster.distance_long_x * cluster.distance_long_x +
+    cluster.distance_lat_y * cluster.distance_lat_y;
+  radar_return.range = std::sqrt(range_sq);
+  radar_return.azimuth = std::atan2(cluster.distance_lat_y, cluster.distance_long_x);
+  radar_return.elevation = 0.0f;
+  radar_return.amplitude = cluster.rcs;
+
+  if (radar_return.range > 1e-3f) {
+    radar_return.doppler_velocity =
+      (cluster.speed_long_x * cluster.distance_long_x +
+      cluster.speed_lat_y * cluster.distance_lat_y) / radar_return.range;
+  } else {
+    radar_return.doppler_velocity = cluster.speed_long_x;
+  }
+
+  return radar_return;
+}
+
 }  // namespace radar_msgs_conversion
 }  // namespace ars408

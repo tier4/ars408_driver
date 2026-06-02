@@ -42,6 +42,8 @@ radar_msgs::msg::RadarTrack ToRadarTrack(
 
 radar_msgs::msg::RadarReturn ToRadarReturn(const RadarObject & object);
 
+radar_msgs::msg::RadarReturn ToRadarReturn(const RadarCluster & cluster);
+
 }  // namespace radar_msgs_conversion
 }  // namespace ars408
 

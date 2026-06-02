@@ -709,6 +709,12 @@ radar_msgs::msg::RadarReturn PeContinentalArs408Node::ConvertRadarObjectToRadarR
   return ars408::radar_msgs_conversion::ToRadarReturn(in_object);
 }
 
+radar_msgs::msg::RadarReturn PeContinentalArs408Node::ConvertRadarClusterToRadarReturn(
+  const ars408::RadarCluster & cluster)
+{
+  return ars408::radar_msgs_conversion::ToRadarReturn(cluster);
+}
+
 void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   const std::unordered_map<uint8_t, ars408::RadarObject> & detected_objects,
   const rclcpp::Time & stamp)
@@ -740,6 +746,29 @@ void PeContinentalArs408Node::RadarDetectedObjectsCallback(
   if (publish_radar_scan_) {
     publisher_radar_scan_->publish(output_scan);
   }
+}
+
+void PeContinentalArs408Node::ClusterListCallback(
+  const std::unordered_map<uint8_t, ars408::RadarCluster> & detected_clusters,
+  const rclcpp::Time & stamp)
+{
+  if (!IsRadarOutputEnabled()) {
+    return;
+  }
+
+  if (!publish_radar_scan_) {
+    return;
+  }
+
+  radar_msgs::msg::RadarScan output_scan;
+  output_scan.header.frame_id = output_frame_;
+  output_scan.header.stamp = stamp;
+
+  for (const auto & entry : detected_clusters) {
+    output_scan.returns.emplace_back(ConvertRadarClusterToRadarReturn(entry.second));
+  }
+
+  publisher_radar_scan_->publish(output_scan);
 }
 
 unique_identifier_msgs::msg::UUID PeContinentalArs408Node::GenerateRandomUUID()
@@ -844,6 +873,10 @@ void PeContinentalArs408Node::Run()
       &PeContinentalArs408Node::RadarDetectedObjectsCallback, this, std::placeholders::_1,
       std::placeholders::_2),
     sequential_publish_);
+  ars408_driver_.RegisterDetectedClustersCallback(
+    std::bind(
+      &PeContinentalArs408Node::ClusterListCallback, this, std::placeholders::_1,
+      std::placeholders::_2));
 
   can_subscription_ = this->create_subscription<can_msgs::msg::Frame>(
     "~/from_can_bus", 10,

@@ -60,6 +60,21 @@ filter_signals::FilterStateHeader ParseFilterStateHeader(
 
 filter_signals::FilterStateCfg ParseFilterStateCfg(const std::array<uint8_t, 8> & in_can_data);
 
+struct Cluster0Status
+{
+  uint8_t nof_clusters_near{0};
+  uint8_t nof_clusters_far{0};
+  uint16_t meas_counter{0};
+  uint8_t interface_version{0};
+};
+
+void ParseClusterStatus(const std::array<uint8_t, 8> & in_can_data, Cluster0Status & out_status);
+
+RadarCluster ParseClusterGeneral(
+  const std::array<uint8_t, 8> & in_can_data, uint16_t measurement_counter);
+
+void ParseClusterQuality(const std::array<uint8_t, 8> & in_can_data, RadarCluster & out_cluster);
+
 }  // namespace can_parser
 }  // namespace ars408
 

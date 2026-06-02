@@ -216,6 +216,100 @@ Obj_3_Extended ParseObjectExtended(const std::array<uint8_t, 8> & in_can_data)
   return obj_extended;
 }
 
+void ParseClusterStatus(const std::array<uint8_t, 8> & in_can_data, Cluster0Status & out_status)
+{
+  out_status.nof_clusters_near = in_can_data[0];
+  out_status.nof_clusters_far = in_can_data[1];
+  // Cluster_MeasCounter: start=24, len=16 (byte-aligned, backward: byte3=lower, byte2=upper)
+  out_status.meas_counter =
+    static_cast<uint16_t>(in_can_data[3]) | (static_cast<uint16_t>(in_can_data[2]) << 8u);
+  // Cluster_InterfaceVersion: start=36, len=4 → byte 4 bits 4-7
+  out_status.interface_version = (in_can_data[4] >> 4u) & 0x0Fu;
+}
+
+RadarCluster ParseClusterGeneral(
+  const std::array<uint8_t, 8> & in_can_data, const uint16_t measurement_counter)
+{
+  RadarCluster cluster;
+  cluster.sequence_id = measurement_counter;
+  cluster.id = in_can_data[0];
+
+  // Cluster_DistLong: start=19, len=13, res=0.2m, offset=-500
+  // byte2[7:3] = raw[4:0], byte1[7:0] = raw[12:5]
+  const uint16_t dist_long_raw =
+    static_cast<uint16_t>((in_can_data[2] >> 3u) & 0x1Fu) |
+    (static_cast<uint16_t>(in_can_data[1]) << 5u);
+  cluster.distance_long_x = dist_long_raw * 0.2f - 500.0f;
+
+  // Cluster_DistLat: start=24, len=10, res=0.2m, offset=-102.3
+  // byte3[7:0] = raw[7:0], byte2[1:0] = raw[9:8]
+  const uint16_t dist_lat_raw =
+    static_cast<uint16_t>(in_can_data[3]) |
+    (static_cast<uint16_t>(in_can_data[2] & 0x03u) << 8u);
+  cluster.distance_lat_y = dist_lat_raw * 0.2f - 102.3f;
+
+  // Cluster_VrelLong: start=46, len=10, res=0.25 m/s, offset=-128
+  // byte5[7:6] = raw[1:0], byte4[7:0] = raw[9:2]
+  const uint16_t vrel_long_raw =
+    static_cast<uint16_t>((in_can_data[5] >> 6u) & 0x03u) |
+    (static_cast<uint16_t>(in_can_data[4]) << 2u);
+  cluster.speed_long_x = vrel_long_raw * 0.25f - 128.0f;
+
+  // Cluster_DynProp: start=48, len=3 → byte6 bits 0-2
+  cluster.dyn_prop = in_can_data[6] & 0x07u;
+
+  // Cluster_VrelLat: start=53, len=9, res=0.25 m/s, offset=-64
+  // byte6[7:5] = raw[2:0], byte5[5:0] = raw[8:3]
+  const uint16_t vrel_lat_raw =
+    static_cast<uint16_t>((in_can_data[6] >> 5u) & 0x07u) |
+    (static_cast<uint16_t>(in_can_data[5] & 0x3Fu) << 3u);
+  cluster.speed_lat_y = vrel_lat_raw * 0.25f - 64.0f;
+
+  // Cluster_RCS: start=56, len=8 → byte7, res=0.5 dBm², offset=-64
+  cluster.rcs = in_can_data[7] * 0.5f - 64.0f;
+
+  return cluster;
+}
+
+void ParseClusterQuality(
+  const std::array<uint8_t, 8> & in_can_data, RadarCluster & out_cluster)
+{
+  // Cluster_ID: start=0, len=8 → used to match to existing cluster
+  const uint8_t cluster_id = in_can_data[0];
+  if (cluster_id != out_cluster.id) {
+    return;
+  }
+
+  // Cluster_DistLong_rms: start=11, len=5 → byte1 bits 3-7
+  const uint8_t dist_long_idx = (in_can_data[1] >> 3u) & 0x1Fu;
+  // Cluster_VrelLong_rms: start=17, len=5 → byte2 bits 1-5
+  const uint8_t vrel_long_idx = (in_can_data[2] >> 1u) & 0x1Fu;
+  // Cluster_DistLat_rms: start=22, len=5 (byte2[7:6]=rms[1:0], byte1[2:0]=rms[4:2])
+  const uint8_t dist_lat_idx =
+    static_cast<uint8_t>(((in_can_data[2] >> 6u) & 0x03u) | ((in_can_data[1] & 0x07u) << 2u));
+  // Cluster_Pdh0: start=24, len=3 → byte3 bits 0-2
+  const uint8_t pdh0_raw = in_can_data[3] & 0x07u;
+  // Cluster_VrelLat_rms: start=28, len=5 (byte3[7:4]=rms[3:0], byte2[0]=rms[4])
+  const uint8_t vrel_lat_idx =
+    static_cast<uint8_t>(((in_can_data[3] >> 4u) & 0x0Fu) | ((in_can_data[2] & 0x01u) << 4u));
+  // Cluster_AmbigState: start=32, len=3 → byte4 bits 0-2
+  out_cluster.ambig_state = in_can_data[4] & 0x07u;
+  // Cluster_InvalidState: start=35, len=5 → byte4 bits 3-7
+  out_cluster.invalid_state = (in_can_data[4] >> 3u) & 0x1Fu;
+
+  // Table 36: same table as kRmsVelocityMps for both distance and velocity
+  out_cluster.dist_long_rms_m =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), dist_long_idx);
+  out_cluster.dist_lat_rms_m =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), dist_lat_idx);
+  out_cluster.vrel_long_rms_mps =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), vrel_long_idx);
+  out_cluster.vrel_lat_rms_mps =
+    LookupRms(kRmsVelocityMps, sizeof(kRmsVelocityMps) / sizeof(float), vrel_lat_idx);
+  out_cluster.pdh0 = DecodeExistenceProbability(pdh0_raw);
+  out_cluster.has_quality = true;
+}
+
 VersionId ParseVersionId(const std::array<uint8_t, 8> & in_can_data)
 {
   VersionId version;

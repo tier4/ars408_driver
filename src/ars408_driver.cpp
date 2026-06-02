@@ -183,6 +183,74 @@ void Ars408Driver::RegisterDetectedObjectsCallback(
   sequential_publish_ = sequential_publish;
 }
 
+void Ars408Driver::RegisterDetectedClustersCallback(
+  std::function<void(
+    const std::unordered_map<uint8_t, ars408::RadarCluster> &,
+    const rclcpp::Time &
+  )> clusters_callback)
+{
+  detected_clusters_callback_ = clusters_callback;
+}
+
+void Ars408Driver::AddDetectedCluster(ars408::RadarCluster cluster)
+{
+  if (cluster.sequence_id == current_cluster_status_.meas_counter) {
+    radar_clusters_.insert_or_assign(cluster.id, cluster);
+    ++updated_clusters_general_;
+  }
+}
+
+void Ars408Driver::ClearRadarClusters()
+{
+  radar_clusters_.clear();
+  updated_clusters_general_ = 0u;
+  updated_clusters_quality_ = 0u;
+}
+
+void Ars408Driver::CallDetectedClustersCallback(
+  std::unordered_map<uint8_t, ars408::RadarCluster> & clusters, const rclcpp::Time & stamp)
+{
+  if (detected_clusters_callback_) {
+    detected_clusters_callback_(clusters, stamp);
+  }
+}
+
+bool Ars408Driver::DetectedClustersReady()
+{
+  if (!valid_radar_state_) {
+    return false;
+  }
+  const uint16_t total_clusters = static_cast<uint16_t>(current_cluster_status_.nof_clusters_near) +
+    static_cast<uint16_t>(current_cluster_status_.nof_clusters_far);
+  if (updated_clusters_general_ != total_clusters) {
+    return false;
+  }
+  if (current_radar_state_.SendQuality && updated_clusters_quality_ != total_clusters) {
+    return false;
+  }
+  return true;
+}
+
+void Ars408Driver::UpdateClusterQuality(
+  const uint8_t cluster_id, const std::array<uint8_t, 8> & in_can_data)
+{
+  auto it = radar_clusters_.find(cluster_id);
+  if (it != radar_clusters_.end()) {
+    can_parser::ParseClusterQuality(in_can_data, it->second);
+    ++updated_clusters_quality_;
+  }
+}
+
+void Ars408Driver::ParseCluster0_Status(const std::array<uint8_t, 8> & in_can_data)
+{
+  can_parser::ParseClusterStatus(in_can_data, current_cluster_status_);
+}
+
+ars408::RadarCluster Ars408Driver::ParseCluster1_General(const std::array<uint8_t, 8> & in_can_data)
+{
+  return can_parser::ParseClusterGeneral(in_can_data, current_cluster_status_.meas_counter);
+}
+
 void Ars408Driver::ParseRadarState(const std::array<uint8_t, 8> & in_can_data)
 {
   can_parser::ParseRadarState(in_can_data, current_radar_state_);
@@ -321,12 +389,57 @@ std::string Ars408Driver::Parse(
         ParseFilterStateCfgFrame(in_can_data);
       }
       break;
+    case ars408::CLUSTER_STATUS_00:
+    case ars408::CLUSTER_STATUS_01:
+    case ars408::CLUSTER_STATUS_02:
+    case ars408::CLUSTER_STATUS_03:
+    case ars408::CLUSTER_STATUS_04:
+    case ars408::CLUSTER_STATUS_05:
+    case ars408::CLUSTER_STATUS_06:
+    case ars408::CLUSTER_STATUS_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_STATUS_BYTES)) {
+        if (!sequential_publish_ && DetectedClustersReady()) {
+          CallDetectedClustersCallback(radar_clusters_, stamp);
+        }
+        ParseCluster0_Status(in_can_data);
+        ClearRadarClusters();
+      }
+      break;
+    case ars408::CLUSTER_GENERAL_00:
+    case ars408::CLUSTER_GENERAL_01:
+    case ars408::CLUSTER_GENERAL_02:
+    case ars408::CLUSTER_GENERAL_03:
+    case ars408::CLUSTER_GENERAL_04:
+    case ars408::CLUSTER_GENERAL_05:
+    case ars408::CLUSTER_GENERAL_06:
+    case ars408::CLUSTER_GENERAL_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_GENERAL_BYTES)) {
+        AddDetectedCluster(ParseCluster1_General(in_can_data));
+      }
+      break;
+    case ars408::CLUSTER_QUALITY_00:
+    case ars408::CLUSTER_QUALITY_01:
+    case ars408::CLUSTER_QUALITY_02:
+    case ars408::CLUSTER_QUALITY_03:
+    case ars408::CLUSTER_QUALITY_04:
+    case ars408::CLUSTER_QUALITY_05:
+    case ars408::CLUSTER_QUALITY_06:
+    case ars408::CLUSTER_QUALITY_07:
+      if (can_parser::HasMinimumDlc(in_data_length, ars408::CLUSTER_QUALITY_BYTES)) {
+        const uint8_t cluster_id = in_can_data[0];
+        UpdateClusterQuality(cluster_id, in_can_data);
+      }
+      break;
     default:
       break;
   }
 
   if (sequential_publish_ && DetectedObjectsReady()) {
     CallDetectedObjectsCallback(radar_objects_, stamp);
+  }
+
+  if (sequential_publish_ && DetectedClustersReady()) {
+    CallDetectedClustersCallback(radar_clusters_, stamp);
   }
 
   return "";
