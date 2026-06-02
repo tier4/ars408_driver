@@ -32,11 +32,14 @@ TEST(Ars408CanEncoder, CanIdForSensor)
 
 TEST(Ars408CanEncoder, EncodeSpeedInformation)
 {
+  // 10.0 m/s = 36.0 km/h; ARS408 factor = 0.02 km/h/bit → raw = 1800
   const auto data = ars408::can_encoder::EncodeSpeedInformation(
     10.0f, ars408::can_encoder::SpeedDirection::FORWARD);
 
   EXPECT_EQ(UnpackSignalIntel(data, 6, 2), 1u);
-  EXPECT_NEAR(static_cast<float>(UnpackSignalIntel(data, 8, 13)) * 0.02f, 10.0f, 0.02f);
+  // Decode: raw * 0.02 [km/h] / 3.6 → [m/s]; tolerance = 1 LSB = 0.02 km/h ≈ 0.006 m/s
+  EXPECT_NEAR(
+    static_cast<float>(UnpackSignalIntel(data, 8, 13)) * 0.02f / 3.6f, 10.0f, 0.01f);
 }
 
 TEST(Ars408CanEncoder, EncodeSpeedStandstill)

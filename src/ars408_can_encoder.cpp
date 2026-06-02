@@ -61,7 +61,9 @@ std::array<uint8_t, 8> EncodeSpeedInformation(
   const float speed_mps, const SpeedDirection direction)
 {
   std::array<uint8_t, 8> data{};
-  const float clamped_speed = std::max(0.f, std::min(speed_mps, 163.8f));
+  // ARS408 ICD: RadarDevice_Speed factor = 0.02 km/h per bit; convert m/s → km/h first.
+  const float speed_kmh = speed_mps * 3.6f;
+  const float clamped_speed = std::max(0.f, std::min(speed_kmh, 163.8f));
   const uint32_t raw_speed = static_cast<uint32_t>(std::lround(clamped_speed / 0.02f)) & 0x1FFFu;
   const uint32_t raw_direction = static_cast<uint32_t>(direction) & 0x03u;
 
