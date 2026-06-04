@@ -1,14 +1,14 @@
 {
   "MaxDistance_valid": true,
-  "SensorID_valid": true,
+  "SensorID_valid": false,
   "RadarPower_valid": true,
   "OutputType_valid": true,
   "SendQuality_valid": true,
   "SendExtInfo_valid": true,
   "SortIndex_valid": true,
   "StoreInNVM_valid": true,
-  "CtrlRelay_valid": false,
-  "RCS_Threshold_valid": false,
+  "CtrlRelay_valid": true,
+  "RCS_Threshold_valid": true,
   "MaxDistance": 196,
   "SensorID": 0,
   "RadarPower": 1,
@@ -16,8 +16,9 @@
   "SendQuality": true,
   "SendExtInfo": true,
   "SortIndex": 1,
-  "CtrlRelay": true,
+  "CtrlRelay": false,
   "StoreInNVM": true,
   "RCS_Threshold": 0,
-  "can_interface": "can0"
+  "can_interface": "vcan0",
+  "current_sensor_id": 0
 }
